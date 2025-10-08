@@ -857,7 +857,7 @@ const autoAssign = async () => {
                         <select
                           onChange={(
 e) => {
-                            const member = unassignedMembers.find(m => m.id === parseInt(e.target.value));
+                           const member = unassignedMembers.find(m => m.id === e.target.value);
                             if (member) {
                               assignToGroup(member, groupIndex);
                               e.target.value = '';
