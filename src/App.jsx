@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Users, UserPlus, Trash2, RefreshCw, AlertCircle, List, Grid, Calendar, TrendingUp, Download, Save, Loader, LogOut } from 'lucide-react';
+import { Users, UserPlus, Trash2, RefreshCw, AlertCircle, List, Grid, Calendar, TrendingUp, Download, Save, Loader, LogOut, Package, Edit2, Check, X } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 const ThroneLibertyRoster = () => {
   // Authentication state
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authLevel, setAuthLevel] = useState('none');
   const [password, setPassword] = useState('');
   
   const [members, setMembers] = useState([]);
   const [events, setEvents] = useState([]);
-  const [groups, setGroups] = useState([[], [], [], []]);
+  const [groups, setGroups] = useState([]);
+  const [lootItems, setLootItems] = useState([]);
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberRole, setNewMemberRole] = useState('DPS');
   const [activeTab, setActiveTab] = useState('groups');
@@ -21,7 +22,13 @@ const ThroneLibertyRoster = () => {
   const [selectedAttendees, setSelectedAttendees] = useState([]);
   const [eventFilter, setEventFilter] = useState('all');
 
+  const [newLootItemName, setNewLootItemName] = useState('');
+  const [newLootItemType, setNewLootItemType] = useState('Weapon');
+  const [editingGroupName, setEditingGroupName] = useState(null);
+  const [tempGroupName, setTempGroupName] = useState('');
+
   const eventTypes = ['Archboss', 'PVP Event', 'Siege', 'Guild War', 'Dungeon', 'Raid', 'Other'];
+  const lootTypes = ['Weapon', 'Armor', 'Accessory', 'Material', 'Other'];
   
   const weaponCombos = [
     'Crossbow + Dagger', 'Crossbow + Greatsword', 'Crossbow + Sword & Shield', 'Crossbow + Longbow',
@@ -60,37 +67,52 @@ const ThroneLibertyRoster = () => {
     'Guardian', 'Oracle'
   ];
 
+  const isEditMode = authLevel === 'edit';
+
   // Load groups from database
   const loadGroupsFromDB = async (membersList) => {
     try {
-      const { data, error } = await supabase
-        .from('groups')
+      const { data: groupsData, error: groupsError } = await supabase
+        .from('party_groups')
         .select('*')
-        .order('group_index')
+        .order('id');
+      
+      if (groupsError) throw groupsError;
+
+      const { data: membersData, error: membersError } = await supabase
+        .from('group_members')
+        .select('*')
+        .order('group_id')
         .order('position');
       
-      if (error) throw error;
+      if (membersError) throw membersError;
       
-      if (data && data.length > 0) {
-        const maxGroupIndex = Math.max(...data.map(g => g.group_index), -1);
-        const groupsArray = Array(maxGroupIndex + 1).fill(null).map(() => []);
-        
-        data.forEach(groupMember => {
-          const member = membersList.find(m => m.id === groupMember.member_id);
-          if (member) {
-            const memberObj = {
-              id: member.id,
-              name: member.name,
-              role: member.role,
-              onDiscord: member.on_discord,
-              onProbation: member.on_probation,
-              questlog: member.questlog || '',
-              weaponCombo: member.weapon_combo || '',
-              className: member.class_name || ''
-            };
-            groupsArray[groupMember.group_index].push(memberObj);
-          }
-        });
+      if (groupsData) {
+        const groupsArray = groupsData.map(group => ({
+          id: group.id,
+          name: group.name,
+          members: []
+        }));
+
+        if (membersData) {
+          membersData.forEach(groupMember => {
+            const member = membersList.find(m => m.id === groupMember.member_id);
+            const groupIndex = groupsArray.findIndex(g => g.id === groupMember.group_id);
+            if (member && groupIndex !== -1) {
+              const memberObj = {
+                id: member.id,
+                name: member.name,
+                role: member.role,
+                onDiscord: member.on_discord,
+                onProbation: member.on_probation,
+                questlog: member.questlog || '',
+                weaponCombo: member.weapon_combo || '',
+                className: member.class_name || ''
+              };
+              groupsArray[groupIndex].members.push(memberObj);
+            }
+          });
+        }
         
         setGroups(groupsArray);
       }
@@ -148,6 +170,26 @@ const ThroneLibertyRoster = () => {
           attendeeCount: e.attendee_count
         })));
       }
+
+      // Load loot items
+      const { data: lootData, error: lootError } = await supabase
+        .from('loot_items')
+        .select(`
+          *,
+          loot_seekers(member_id)
+        `)
+        .order('name');
+      
+      if (lootError) throw lootError;
+      
+      if (lootData) {
+        setLootItems(lootData.map(item => ({
+          id: item.id,
+          name: item.name,
+          type: item.type,
+          seekers: item.loot_seekers.map(s => s.member_id)
+        })));
+      }
     } catch (error) {
       console.error('Error loading data:', error);
       alert('Error loading data. Please refresh the page.');
@@ -156,10 +198,10 @@ const ThroneLibertyRoster = () => {
     }
   };
 
-const handleLogin = () => {
+  const handleLogin = () => {
     if (password === 'AbsoLOOT') {
-      setIsAuthenticated(true);
-      localStorage.setItem('rosterAuthenticated', 'true');
+      setAuthLevel('edit');
+      localStorage.setItem('rosterAuthLevel', 'edit');
       loadData();
     } else {
       alert('Wrong password!');
@@ -167,9 +209,15 @@ const handleLogin = () => {
     }
   };
 
+  const handleViewOnly = () => {
+    setAuthLevel('view');
+    localStorage.setItem('rosterAuthLevel', 'view');
+    loadData();
+  };
+
   const handleLogout = () => {
-    setIsAuthenticated(false);
-    localStorage.removeItem('rosterAuthenticated');
+    setAuthLevel('none');
+    localStorage.removeItem('rosterAuthLevel');
     setPassword('');
   };
   
@@ -177,15 +225,15 @@ const handleLogin = () => {
   const saveGroups = async (newGroups) => {
     setSaving(true);
     try {
-      // Delete existing groups
-      await supabase.from('groups').delete().neq('id', 0);
+      // Delete existing group members
+      await supabase.from('group_members').delete().neq('id', 0);
       
-      // Insert new groups
+      // Insert new group members
       const groupRecords = [];
-      newGroups.forEach((group, groupIndex) => {
-        group.forEach((member, position) => {
+      newGroups.forEach((group) => {
+        group.members.forEach((member, position) => {
           groupRecords.push({
-            group_index: groupIndex,
+            group_id: group.id,
             member_id: member.id,
             position: position
           });
@@ -193,7 +241,7 @@ const handleLogin = () => {
       });
       
       if (groupRecords.length > 0) {
-        const { error } = await supabase.from('groups').insert(groupRecords);
+        const { error } = await supabase.from('group_members').insert(groupRecords);
         if (error) throw error;
       }
       
@@ -201,6 +249,26 @@ const handleLogin = () => {
     } catch (error) {
       console.error('Error saving groups:', error);
       alert('Error saving groups. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateGroupName = async (groupId, newName) => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('party_groups')
+        .update({ name: newName })
+        .eq('id', groupId);
+      
+      if (error) throw error;
+      
+      setGroups(groups.map(g => g.id === groupId ? { ...g, name: newName } : g));
+      setEditingGroupName(null);
+    } catch (error) {
+      console.error('Error updating group name:', error);
+      alert('Error updating group name. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -232,13 +300,43 @@ const handleLogin = () => {
   };
 
   const addGroup = async () => {
-    await saveGroups([...groups, []]);
+    setSaving(true);
+    try {
+      const { data, error } = await supabase
+        .from('party_groups')
+        .insert({ name: `Group ${groups.length + 1}` })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      setGroups([...groups, { id: data.id, name: data.name, members: [] }]);
+    } catch (error) {
+      console.error('Error adding group:', error);
+      alert('Error adding group. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const removeGroup = async (groupIndex) => {
+  const removeGroup = async (groupId) => {
     if (groups.length <= 1) return;
-    const newGroups = groups.filter((_, index) => index !== groupIndex);
-    await saveGroups(newGroups);
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('party_groups')
+        .delete()
+        .eq('id', groupId);
+      
+      if (error) throw error;
+      
+      setGroups(groups.filter(g => g.id !== groupId));
+    } catch (error) {
+      console.error('Error removing group:', error);
+      alert('Error removing group. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addMember = async () => {
@@ -290,7 +388,7 @@ const handleLogin = () => {
       if (error) throw error;
       
       setMembers(members.filter(m => m.id !== id));
-      setGroups(groups.map(g => g.filter(m => m.id !== id)));
+      setGroups(groups.map(g => ({ ...g, members: g.members.filter(m => m.id !== id) })));
     } catch (error) {
       console.error('Error removing member:', error);
       alert('Error removing member. Please try again.');
@@ -312,7 +410,7 @@ const handleLogin = () => {
     
     const updatedMember = { ...member, onProbation: !member.onProbation };
     setMembers(members.map(m => m.id === id ? updatedMember : m));
-    setGroups(groups.map(g => g.filter(m => m.id !== id)));
+    setGroups(groups.map(g => ({ ...g, members: g.members.filter(m => m.id !== id) })));
     await saveMember(updatedMember);
   };
 
@@ -344,34 +442,31 @@ const handleLogin = () => {
     await saveMember(updatedMember);
   };
 
-  const updateClassName = async (id, className) => {
-    const member = members.find(m => m.id === id);
-    if (!member) return;
+  const assignToGroup = async (member, groupId) => {
+    const group = groups.find(g => g.id === groupId);
+    if (!group || group.members.length >= 6 || member.onProbation) return;
     
-    const updatedMember = { ...member, className };
-    setMembers(members.map(m => m.id === id ? updatedMember : m));
-    await saveMember(updatedMember);
-  };
-
-  const assignToGroup = async (member, groupIndex) => {
-    if (groups[groupIndex].length >= 6 || member.onProbation) return;
-    
-    const newGroups = groups.map((g, i) => 
-      i === groupIndex ? [...g, member] : g.filter(m => m.id !== member.id)
+    const newGroups = groups.map(g => 
+      g.id === groupId 
+        ? { ...g, members: [...g.members, member] }
+        : { ...g, members: g.members.filter(m => m.id !== member.id) }
     );
     await saveGroups(newGroups);
   };
 
-  const removeFromGroup = async (memberId, groupIndex) => {
-    const newGroups = [...groups];
-    newGroups[groupIndex] = newGroups[groupIndex].filter(m => m.id !== memberId);
+  const removeFromGroup = async (memberId, groupId) => {
+    const newGroups = groups.map(g => 
+      g.id === groupId 
+        ? { ...g, members: g.members.filter(m => m.id !== memberId) }
+        : g
+    );
     await saveGroups(newGroups);
   };
 
   const autoAssign = async () => {
     const activeMembers = members.filter(m => !m.onProbation);
     const unassigned = activeMembers.filter(m => 
-      !groups.some(g => g.some(gm => gm.id === m.id))
+      !groups.some(g => g.members.some(gm => gm.id === m.id))
     );
     
     const tanks = unassigned.filter(m => m.role === 'TANK');
@@ -380,20 +475,20 @@ const handleLogin = () => {
     const unknown = unassigned.filter(m => m.role === 'UNKNOWN');
     
     const numGroups = groups.length;
-    const newGroups = Array(numGroups).fill(null).map(() => []);
+    const newGroups = groups.map(g => ({ ...g, members: [] }));
     
     for (let i = 0; i < numGroups; i++) {
-      if (tanks[i]) newGroups[i].push(tanks[i]);
-      if (healers[i]) newGroups[i].push(healers[i]);
+      if (tanks[i]) newGroups[i].members.push(tanks[i]);
+      if (healers[i]) newGroups[i].members.push(healers[i]);
     }
     
     let groupIndex = 0;
     [...dps, ...unknown].forEach(member => {
-      while (newGroups[groupIndex].length >= 6 && groupIndex < numGroups - 1) {
+      while (newGroups[groupIndex].members.length >= 6 && groupIndex < numGroups - 1) {
         groupIndex++;
       }
-      if (groupIndex < numGroups && newGroups[groupIndex].length < 6) {
-        newGroups[groupIndex].push(member);
+      if (groupIndex < numGroups && newGroups[groupIndex].members.length < 6) {
+        newGroups[groupIndex].members.push(member);
       }
     });
     
@@ -401,7 +496,8 @@ const handleLogin = () => {
   };
 
   const clearGroups = async () => {
-    await saveGroups([[], [], [], []]);
+    const clearedGroups = groups.map(g => ({ ...g, members: [] }));
+    await saveGroups(clearedGroups);
   };
 
   const addEvent = async () => {
@@ -471,6 +567,85 @@ const handleLogin = () => {
     }
   };
 
+  const addLootItem = async () => {
+    if (!newLootItemName.trim()) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('loot_items')
+        .insert({
+          name: newLootItemName.trim(),
+          type: newLootItemType
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      setLootItems([...lootItems, { id: data.id, name: data.name, type: data.type, seekers: [] }]);
+      setNewLootItemName('');
+    } catch (error) {
+      console.error('Error adding loot item:', error);
+      alert('Error adding loot item. Please try again.');
+    }
+  };
+
+  const deleteLootItem = async (itemId) => {
+    try {
+      const { error } = await supabase
+        .from('loot_items')
+        .delete()
+        .eq('id', itemId);
+      
+      if (error) throw error;
+      
+      setLootItems(lootItems.filter(item => item.id !== itemId));
+    } catch (error) {
+      console.error('Error deleting loot item:', error);
+      alert('Error deleting loot item. Please try again.');
+    }
+  };
+
+  const toggleLootSeeker = async (itemId, memberId) => {
+    const item = lootItems.find(i => i.id === itemId);
+    if (!item) return;
+    
+    const isCurrentlySeeker = item.seekers.includes(memberId);
+    
+    try {
+      if (isCurrentlySeeker) {
+        const { error } = await supabase
+          .from('loot_seekers')
+          .delete()
+          .eq('item_id', itemId)
+          .eq('member_id', memberId);
+        
+        if (error) throw error;
+        
+        setLootItems(lootItems.map(i => 
+          i.id === itemId 
+            ? { ...i, seekers: i.seekers.filter(id => id !== memberId) }
+            : i
+        ));
+      } else {
+        const { error } = await supabase
+          .from('loot_seekers')
+          .insert({ item_id: itemId, member_id: memberId });
+        
+        if (error) throw error;
+        
+        setLootItems(lootItems.map(i => 
+          i.id === itemId 
+            ? { ...i, seekers: [...i.seekers, memberId] }
+            : i
+        ));
+      }
+    } catch (error) {
+      console.error('Error toggling loot seeker:', error);
+      alert('Error updating loot seeker. Please try again.');
+    }
+  };
+
   const getMemberStats = (memberId) => {
     const memberEvents = events.filter(e => e.attendees.includes(memberId));
     const archboss = memberEvents.filter(e => e.type === 'Archboss').length;
@@ -516,11 +691,10 @@ const handleLogin = () => {
     a.click();
   };
   
- // Check if already authenticated on mount
   useEffect(() => {
-    const authStatus = localStorage.getItem('rosterAuthenticated');
-    if (authStatus === 'true') {
-      setIsAuthenticated(true);
+    const savedAuthLevel = localStorage.getItem('rosterAuthLevel');
+    if (savedAuthLevel) {
+      setAuthLevel(savedAuthLevel);
       loadData();
     } else {
       setLoading(false);
@@ -530,7 +704,7 @@ const handleLogin = () => {
   const activeMembers = members.filter(m => !m.onProbation);
   const probationMembers = members.filter(m => m.onProbation);
   const unassignedMembers = activeMembers.filter(m => 
-    !groups.some(g => g.some(gm => gm.id === m.id))
+    !groups.some(g => g.members.some(gm => gm.id === m.id))
   );
 
   const filteredEvents = eventFilter === 'all' 
@@ -547,9 +721,9 @@ const handleLogin = () => {
   };
 
   const getGroupComposition = (group) => {
-    const tanks = group.filter(m => m.role === 'TANK').length;
-    const healers = group.filter(m => m.role === 'HEALER').length;
-    const dps = group.filter(m => m.role === 'DPS').length;
+    const tanks = group.members.filter(m => m.role === 'TANK').length;
+    const healers = group.members.filter(m => m.role === 'HEALER').length;
+    const dps = group.members.filter(m => m.role === 'DPS').length;
     return { tanks, healers, dps };
   };
 
@@ -570,8 +744,7 @@ const handleLogin = () => {
     return stats;
   };
 
-// Show login screen if not authenticated
-  if (!isAuthenticated) {
+  if (authLevel === 'none') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
         <div className="bg-slate-800 p-8 rounded-lg border border-slate-700 shadow-2xl max-w-md w-full">
@@ -580,21 +753,31 @@ const handleLogin = () => {
             <h1 className="text-white text-3xl font-bold mb-2">Throne and Liberty</h1>
             <h2 className="text-slate-400 text-xl">Roster Manager</h2>
           </div>
-          <input
-            type="password"
-            placeholder="Enter password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-            className="px-4 py-3 bg-slate-700 text-white rounded mb-4 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-            autoFocus
-          />
+          
           <button 
-            onClick={handleLogin} 
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-semibold transition"
+            onClick={handleViewOnly}
+            className="w-full bg-slate-600 hover:bg-slate-700 text-white py-3 rounded font-semibold transition mb-3"
           >
-            Login
+            View Roster (Read Only)
           </button>
+          
+          <div className="border-t border-slate-600 pt-4 mt-4">
+            <p className="text-slate-400 text-sm mb-3 text-center">Admin Access</p>
+            <input
+              type="password"
+              placeholder="Enter password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+              className="px-4 py-3 bg-slate-700 text-white rounded mb-3 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button 
+              onClick={handleLogin} 
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-semibold transition"
+            >
+              Login as Admin
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -619,453 +802,20 @@ const handleLogin = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2 flex items-center justify-center gap-3">
-            <Users className="w-10 h-10" />
-            Throne and Liberty Roster Manager
-            {saving && <Loader className="w-6 h-6 text-blue-400 animate-spin" />}
-          </h1>
-          <p className="text-slate-400">Organize your guild and track event attendance</p>
-          <button
-            onClick={handleLogout}
-            className="mt-2 text-slate-400 hover:text-white text-sm transition inline-flex items-center gap-1"
-          >
-            <LogOut className="w-4 h-4" />
-            Logout
-          </button>
-        </div>
-
-        <div className="flex gap-2 mb-6 flex-wrap">
-          <button
-            onClick={() => setActiveTab('groups')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
-              activeTab === 'groups' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-            }`}
-          >
-            <Grid className="w-5 h-5" />
-            Group Manager
-          </button>
-          <button
-            onClick={() => setActiveTab('roster')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
-              activeTab === 'roster' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-            }`}
-          >
-            <List className="w-5 h-5" />
-            Full Roster
-          </button>
-          <button
-            onClick={() => setActiveTab('events')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
-              activeTab === 'events' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-            }`}
-          >
-            <Calendar className="w-5 h-5" />
-            Event Tracking
-          </button>
-        </div>
-
-        {activeTab === 'groups' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 bg-slate-800 rounded-lg p-6 border border-slate-700">
-              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <UserPlus className="w-5 h-5" />
-                Add Member
-              </h2>
-              <input
-                type="text"
-                placeholder="Member name"
-                value={newMemberName}
-                onChange={(e) => setNewMemberName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addMember()}
-                className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <select
-                value={newMemberRole}
-                onChange={(e) => setNewMemberRole(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="TANK">Tank</option>
-                <option value="HEALER">Healer</option>
-                <option value="DPS">DPS</option>
-                <option value="UNKNOWN">Unknown</option>
-              </select>
+        {authLevel === 'view' && (
+          <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-yellow-400" />
+                <span className="text-yellow-400 font-semibold">Viewing in Read-Only Mode</span>
+              </div>
               <button
-                onClick={addMember}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition"
+                onClick={handleLogout}
+                className="text-yellow-400 hover:text-yellow-300 text-sm"
               >
-                Add Member
+                Switch to Admin
               </button>
-
-              <div className="mt-6 space-y-2">
-                <button
-                  onClick={autoAssign}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-semibold transition flex items-center justify-center gap-2"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Auto-Assign Groups
-                </button>
-                <button
-                  onClick={addGroup}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition flex items-center justify-center gap-2"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Add New Group
-                </button>
-                <button
-                  onClick={clearGroups}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded font-semibold transition"
-                >
-                  Clear All Groups
-                </button>
-              </div>
-
-              <div className="mt-6">
-                <h3 className="text-white font-semibold mb-2">Unassigned ({unassignedMembers.length})</h3>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {unassignedMembers.map(member => (
-                    <div key={member.id} className="bg-slate-700 p-2 rounded flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className={`${getRoleColor(member.role)} w-3 h-3 rounded-full`}></span>
-                        <span className="text-white text-sm">{member.name}</span>
-                        <span className="text-slate-400 text-xs">({member.role})</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
-
-            <div className="lg:col-span-2">
-              <div className="mb-4 text-slate-400 text-sm">
-                Total Groups: {groups.length} | Total Assigned: {groups.reduce((sum, g) => sum + g.length, 0)}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {groups.map((group, groupIndex) => {
-                  const comp = getGroupComposition(group);
-                  const isBalanced = comp.tanks >= 1 && comp.healers >= 1;
-                  
-                  return (
-                    <div key={groupIndex} className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-white font-bold text-lg">Group {groupIndex + 1}</h3>
-                        <div className="flex items-center gap-2">
-                          {!isBalanced && group.length > 0 && (
-                            <AlertCircle className="w-4 h-4 text-yellow-500" />
-                          )}
-                          <span className="text-slate-400 text-sm">
-                            {group.length}/6
-                          </span>
-                          {groups.length > 1 && (
-                            <button
-                              onClick={() => removeGroup(groupIndex)}
-                              className="text-red-400 hover:text-red-300 ml-2"
-                              title="Delete group"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="text-xs text-slate-400 mb-3">
-                        T: {comp.tanks} | H: {comp.healers} | D: {comp.dps}
-                      </div>
-
-                      <div className="space-y-2 mb-3 min-h-[240px]">
-                        {group.map(member => (
-                          <div key={member.id} className="bg-slate-700 p-2 rounded flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className={`${getRoleColor(member.role)} w-3 h-3 rounded-full`}></span>
-                              <span className="text-white text-sm">{member.name}</span>
-                              <span className="text-slate-400 text-xs">({member.role})</span>
-                            </div>
-                            <button
-                              onClick={() => removeFromGroup(member.id, groupIndex)}
-                              className="text-red-400 hover:text-red-300"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-
-                      {group.length < 6 && (
-                        <select
-                          onChange={(e) => {
-                            const member = unassignedMembers.find(m => m.id === e.target.value);
-                            if (member) {
-                              assignToGroup(member, groupIndex);
-                              e.target.value = '';
-                            }
-                          }}
-                          className="w-full px-3 py-2 bg-slate-700 text-white rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          defaultValue=""
-                        >
-                          <option value="" disabled>Add member...</option>
-                          {unassignedMembers.map(member => (
-                            <option key={member.id} value={member.id}>
-                              {member.name} ({member.role})
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'roster' && (
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <div className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="bg-slate-700 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-white">{stats.total}</div>
-                <div className="text-sm text-slate-400">Total Active</div>
-              </div>
-              <div className="bg-green-900/30 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-green-400">{stats.tanks}</div>
-                <div className="text-sm text-slate-400">Tanks</div>
-              </div>
-              <div className="bg-yellow-900/30 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-yellow-400">{stats.healers}</div>
-                <div className="text-sm text-slate-400">Healers</div>
-              </div>
-              <div className="bg-red-900/30 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-red-400">{stats.dps}</div>
-                <div className="text-sm text-slate-400">DPS</div>
-              </div>
-              <div className="bg-blue-900/30 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-blue-400">{stats.onDiscord}</div>
-                <div className="text-sm text-slate-400">On Discord</div>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-lg font-bold text-white mb-3">Class Distribution</h3>
-              <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
-                {Object.entries(classStats).map(([className, count]) => (
-                  count > 0 && (
-                    <div key={className} className="bg-slate-700 p-2 rounded text-center">
-                      <div className="text-lg font-bold text-purple-400">{count}</div>
-                      <div className="text-xs text-slate-400">{className}</div>
-                    </div>
-                  )
-                ))}
-              </div>
-            </div>
-
-            <h2 className="text-xl font-bold text-white mb-4">Active Roster</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-700">
-                    <th className="text-left text-slate-400 py-3 px-4">Name</th>
-                    <th className="text-left text-slate-400 py-3 px-4">Role</th>
-                    <th className="text-left text-slate-400 py-3 px-4">Weapon Combo</th>
-                    <th className="text-left text-slate-400 py-3 px-4">Class Name</th>
-                    <th className="text-left text-slate-400 py-3 px-4">Questlog</th>
-                    <th className="text-center text-slate-400 py-3 px-4">Events</th>
-                    <th className="text-center text-slate-400 py-3 px-4">Discord</th>
-                    <th className="text-center text-slate-400 py-3 px-4">Probation</th>
-                    <th className="text-center text-slate-400 py-3 px-4">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeMembers.map(member => {
-                    const memberStats = getMemberStats(member.id);
-                    return (
-                      <tr key={member.id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <span className={`${getRoleColor(member.role)} w-3 h-3 rounded-full`}></span>
-                            <span className="text-white">{member.name}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <select
-                            value={member.role}
-                            onChange={(e) => updateMemberRole(member.id, e.target.value)}
-                            className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="TANK">Tank</option>
-                            <option value="HEALER">Healer</option>
-                            <option value="DPS">DPS</option>
-                            <option value="UNKNOWN">Unknown</option>
-                          </select>
-                        </td>
-                        <td className="py-3 px-4">
-                          <select
-                            value={member.weaponCombo}
-                            onChange={(e) => updateWeaponCombo(member.id, e.target.value)}
-                            className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="">Select...</option>
-                            {weaponCombos.map(combo => (
-                              <option key={combo} value={combo}>{combo}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="py-3 px-4">
-                          <input
-                            type="text"
-                            value={member.className}
-                            disabled
-                            className="w-full px-2 py-1 bg-slate-600 text-slate-300 text-sm rounded cursor-not-allowed"
-                          />
-                        </td>
-                        <td className="py-3 px-4">
-                          <input
-                            type="text"
-                            placeholder="Build link..."
-                            value={member.questlog}
-                            onChange={(e) => updateQuestlog(member.id, e.target.value)}
-                            className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className="text-white font-semibold">{memberStats.total}</span>
-                          <div className="text-xs text-slate-400">
-                            AB:{memberStats.archboss} PVP:{memberStats.pvp} S:{memberStats.siege}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <input
-                            type="checkbox"
-                            checked={member.onDiscord}
-                            onChange={() => toggleDiscord(member.id)}
-                            className="w-5 h-5 cursor-pointer"
-                          />
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <input
-                            type="checkbox"
-                            checked={member.onProbation}
-                            onChange={() => toggleProbation(member.id)}
-                            className="w-5 h-5 cursor-pointer"
-                          />
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <button
-                            onClick={() => removeMember(member.id)}
-                            className="text-red-400 hover:text-red-300"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {probationMembers.length > 0 && (
-              <>
-                <h2 className="text-xl font-bold text-orange-400 mb-4 mt-8">On Probation ({probationMembers.length})</h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-slate-700">
-                        <th className="text-left text-slate-400 py-3 px-4">Name</th>
-                        <th className="text-left text-slate-400 py-3 px-4">Role</th>
-                        <th className="text-left text-slate-400 py-3 px-4">Weapon Combo</th>
-                        <th className="text-left text-slate-400 py-3 px-4">Class Name</th>
-                        <th className="text-left text-slate-400 py-3 px-4">Questlog</th>
-                        <th className="text-center text-slate-400 py-3 px-4">Discord</th>
-                        <th className="text-center text-slate-400 py-3 px-4">Probation</th>
-                        <th className="text-center text-slate-400 py-3 px-4">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {probationMembers.map(member => (
-                        <tr key={member.id} className="border-b border-slate-700/50 hover:bg-slate-700/30 bg-orange-900/10">
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              <span className={`${getRoleColor(member.role)} w-3 h-3 rounded-full`}></span>
-                              <span className="text-white">{member.name}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <select
-                              value={member.role}
-                              onChange={(e) => updateMemberRole(member.id, e.target.value)}
-                              className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="TANK">Tank</option>
-                              <option value="HEALER">Healer</option>
-                              <option value="DPS">DPS</option>
-                              <option value="UNKNOWN">Unknown</option>
-                            </select>
-                          </td>
-                          <td className="py-3 px-4">
-                            <select
-                              value={member.weaponCombo}
-                              onChange={(e) => updateWeaponCombo(member.id, e.target.value)}
-                              className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">Select...</option>
-                              {weaponCombos.map(combo => (
-                                <option key={combo} value={combo}>{combo}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="py-3 px-4">
-                            <input
-                              type="text"
-                              value={member.className}
-                              disabled
-                              className="w-full px-2 py-1 bg-slate-600 text-slate-300 text-sm rounded cursor-not-allowed"
-                            />
-                          </td>
-                          <td className="py-3 px-4">
-                            <input
-                              type="text"
-                              placeholder="Build link..."
-                              value={member.questlog}
-                              onChange={(e) => updateQuestlog(member.id, e.target.value)}
-                              className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <input
-                              type="checkbox"
-                              checked={member.onDiscord}
-                              onChange={() => toggleDiscord(member.id)}
-                              className="w-5 h-5 cursor-pointer"
-                            />
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <input
-                              type="checkbox"
-                              checked={member.onProbation}
-                              onChange={() => toggleProbation(member.id)}
-                              className="w-5 h-5 cursor-pointer"
-                            />
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <button
-                              onClick={() => removeMember(member.id)}
-                              className="text-red-400 hover:text-red-300"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
           </div>
         )}
 
@@ -1078,7 +828,8 @@ const handleLogin = () => {
                 <select
                   value={newEventType}
                   onChange={(e) => setNewEventType(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={!isEditMode}
+                  className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
                 >
                   {eventTypes.map(type => (
                     <option key={type} value={type}>{type}</option>
@@ -1089,7 +840,8 @@ const handleLogin = () => {
                   type="date"
                   value={newEventDate}
                   onChange={(e) => setNewEventDate(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={!isEditMode}
+                  className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
                 />
 
                 <div className="mb-3">
@@ -1098,12 +850,13 @@ const handleLogin = () => {
                   </div>
                   <div className="max-h-48 overflow-y-auto bg-slate-700 rounded p-3 space-y-2">
                     {activeMembers.map(member => (
-                      <label key={member.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-600 p-1 rounded">
+                      <label key={member.id} className={`flex items-center gap-2 p-1 rounded ${isEditMode ? 'cursor-pointer hover:bg-slate-600' : 'cursor-default'}`}>
                         <input
                           type="checkbox"
                           checked={selectedAttendees.includes(member.id)}
                           onChange={() => toggleAttendee(member.id)}
-                          className="w-4 h-4"
+                          disabled={!isEditMode}
+                          className="w-4 h-4 disabled:cursor-not-allowed"
                         />
                         <span className={`${getRoleColor(member.role)} w-2 h-2 rounded-full`}></span>
                         <span className="text-white text-sm">{member.name}</span>
@@ -1114,8 +867,8 @@ const handleLogin = () => {
 
                 <button
                   onClick={addEvent}
-                  disabled={selectedAttendees.length === 0}
-                  className="w-full bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white py-2 rounded font-semibold transition"
+                  disabled={!isEditMode || selectedAttendees.length === 0}
+                  className={`w-full ${isEditMode && selectedAttendees.length > 0 ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-600 cursor-not-allowed'} text-white py-2 rounded font-semibold transition`}
                 >
                   Log Event
                 </button>
@@ -1204,12 +957,14 @@ const handleLogin = () => {
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="text-blue-400 font-bold">{event.attendeeCount} attendees</span>
-                            <button
-                              onClick={() => deleteEvent(event.id)}
-                              className="text-red-400 hover:text-red-300"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {isEditMode && (
+                              <button
+                                onClick={() => deleteEvent(event.id)}
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-1">
@@ -1230,9 +985,648 @@ const handleLogin = () => {
             </div>
           </div>
         )}
+
+        {activeTab === 'loot' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1 bg-slate-800 rounded-lg p-6 border border-slate-700">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Add Loot Item
+              </h2>
+              
+              <input
+                type="text"
+                placeholder="Item name"
+                value={newLootItemName}
+                onChange={(e) => setNewLootItemName(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && isEditMode && addLootItem()}
+                disabled={!isEditMode}
+                className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+              />
+              
+              <select
+                value={newLootItemType}
+                onChange={(e) => setNewLootItemType(e.target.value)}
+                disabled={!isEditMode}
+                className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+              >
+                {lootTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+              
+              <button
+                onClick={addLootItem}
+                disabled={!isEditMode}
+                className={`w-full ${isEditMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-600 cursor-not-allowed'} text-white py-2 rounded font-semibold transition`}
+              >
+                Add Item
+              </button>
+
+              <div className="mt-6">
+                <h3 className="text-white font-semibold mb-2">Total Items: {lootItems.length}</h3>
+                <div className="text-sm text-slate-400">
+                  Track which members need specific boss gear and coordinate loot distribution
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-2">
+              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+                <h2 className="text-xl font-bold text-white mb-4">Loot Items</h2>
+                
+                {lootItems.length === 0 ? (
+                  <div className="text-center text-slate-400 py-8">
+                    No loot items added yet. Start tracking boss gear!
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                    {lootItems.map(item => (
+                      <div key={item.id} className="bg-slate-700 rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h3 className="text-white font-semibold text-lg">{item.name}</h3>
+                            <span className="text-xs text-slate-400 bg-slate-600 px-2 py-1 rounded mt-1 inline-block">
+                              {item.type}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-blue-400 font-bold">{item.seekers.length} seeking</span>
+                            {isEditMode && (
+                              <button
+                                onClick={() => deleteLootItem(item.id)}
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="text-sm text-slate-400 mb-2">Members seeking this item:</div>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {activeMembers.map(member => {
+                              const isSeeking = item.seekers.includes(member.id);
+                              return (
+                                <label
+                                  key={member.id}
+                                  className={`flex items-center gap-2 p-2 rounded transition ${
+                                    isSeeking ? 'bg-blue-900/50 border border-blue-700' : 'bg-slate-600'
+                                  } ${isEditMode ? 'cursor-pointer hover:bg-slate-500' : 'cursor-default'}`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isSeeking}
+                                    onChange={() => toggleLootSeeker(item.id, member.id)}
+                                    disabled={!isEditMode}
+                                    className="w-4 h-4 disabled:cursor-not-allowed"
+                                  />
+                                  <span className={`${getRoleColor(member.role)} w-2 h-2 rounded-full`}></span>
+                                  <span className="text-white text-sm">{member.name}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
 export default ThroneLibertyRoster;
+
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-white mb-2 flex items-center justify-center gap-3">
+            <Users className="w-10 h-10" />
+            Throne and Liberty Roster Manager
+            {saving && <Loader className="w-6 h-6 text-blue-400 animate-spin" />}
+          </h1>
+          <p className="text-slate-400">Organize your guild and track event attendance</p>
+          {isEditMode && (
+            <button
+              onClick={handleLogout}
+              className="mt-2 text-slate-400 hover:text-white text-sm transition inline-flex items-center gap-1"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          )}
+        </div>
+
+        <div className="flex gap-2 mb-6 flex-wrap">
+          <button
+            onClick={() => setActiveTab('groups')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
+              activeTab === 'groups' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+            }`}
+          >
+            <Grid className="w-5 h-5" />
+            Group Manager
+          </button>
+          <button
+            onClick={() => setActiveTab('roster')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
+              activeTab === 'roster' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+            }`}
+          >
+            <List className="w-5 h-5" />
+            Full Roster
+          </button>
+          <button
+            onClick={() => setActiveTab('events')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
+              activeTab === 'events' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+            }`}
+          >
+            <Calendar className="w-5 h-5" />
+            Event Tracking
+          </button>
+          <button
+            onClick={() => setActiveTab('loot')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
+              activeTab === 'loot' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+            }`}
+          >
+            <Package className="w-5 h-5" />
+            Loot Tracker
+          </button>
+        </div>
+
+        {activeTab === 'groups' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1 bg-slate-800 rounded-lg p-6 border border-slate-700">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <UserPlus className="w-5 h-5" />
+                Add Member
+              </h2>
+              <input
+                type="text"
+                placeholder="Member name"
+                value={newMemberName}
+                onChange={(e) => setNewMemberName(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && isEditMode && addMember()}
+                disabled={!isEditMode}
+                className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+              />
+              <select
+                value={newMemberRole}
+                onChange={(e) => setNewMemberRole(e.target.value)}
+                disabled={!isEditMode}
+                className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+              >
+                <option value="TANK">Tank</option>
+                <option value="HEALER">Healer</option>
+                <option value="DPS">DPS</option>
+                <option value="UNKNOWN">Unknown</option>
+              </select>
+              <button
+                onClick={addMember}
+                disabled={!isEditMode}
+                className={`w-full ${isEditMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-600 cursor-not-allowed'} text-white py-2 rounded font-semibold transition`}
+              >
+                Add Member
+              </button>
+
+              <div className="mt-6 space-y-2">
+                <button
+                  onClick={autoAssign}
+                  disabled={!isEditMode}
+                  className={`w-full ${isEditMode ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-600 cursor-not-allowed'} text-white py-2 rounded font-semibold transition flex items-center justify-center gap-2`}
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Auto-Assign Groups
+                </button>
+                <button
+                  onClick={addGroup}
+                  disabled={!isEditMode}
+                  className={`w-full ${isEditMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-600 cursor-not-allowed'} text-white py-2 rounded font-semibold transition flex items-center justify-center gap-2`}
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Add New Group
+                </button>
+                <button
+                  onClick={clearGroups}
+                  disabled={!isEditMode}
+                  className={`w-full ${isEditMode ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-600 cursor-not-allowed'} text-white py-2 rounded font-semibold transition`}
+                >
+                  Clear All Groups
+                </button>
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-white font-semibold mb-2">Unassigned ({unassignedMembers.length})</h3>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {unassignedMembers.map(member => (
+                    <div key={member.id} className="bg-slate-700 p-2 rounded flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`${getRoleColor(member.role)} w-3 h-3 rounded-full`}></span>
+                        <span className="text-white text-sm">{member.name}</span>
+                        <span className="text-slate-400 text-xs">({member.role})</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-2">
+              <div className="mb-4 text-slate-400 text-sm">
+                Total Groups: {groups.length} | Total Assigned: {groups.reduce((sum, g) => sum + g.members.length, 0)}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {groups.map((group) => {
+                  const comp = getGroupComposition(group);
+                  const isBalanced = comp.tanks >= 1 && comp.healers >= 1;
+                  
+                  return (
+                    <div key={group.id} className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+                      <div className="flex items-center justify-between mb-3">
+                        {editingGroupName === group.id ? (
+                          <div className="flex items-center gap-2 flex-1">
+                            <input
+                              type="text"
+                              value={tempGroupName}
+                              onChange={(e) => setTempGroupName(e.target.value)}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                  updateGroupName(group.id, tempGroupName);
+                                }
+                              }}
+                              className="flex-1 px-2 py-1 bg-slate-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => updateGroupName(group.id, tempGroupName)}
+                              className="text-green-400 hover:text-green-300"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setEditingGroupName(null)}
+                              className="text-red-400 hover:text-red-300"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-white font-bold text-lg">{group.name}</h3>
+                            {isEditMode && (
+                              <button
+                                onClick={() => {
+                                  setEditingGroupName(group.id);
+                                  setTempGroupName(group.name);
+                                }}
+                                className="text-slate-400 hover:text-white"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          {!isBalanced && group.members.length > 0 && (
+                            <AlertCircle className="w-4 h-4 text-yellow-500" />
+                          )}
+                          <span className="text-slate-400 text-sm">
+                            {group.members.length}/6
+                          </span>
+                          {groups.length > 1 && isEditMode && (
+                            <button
+                              onClick={() => removeGroup(group.id)}
+                              className="text-red-400 hover:text-red-300 ml-2"
+                              title="Delete group"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="text-xs text-slate-400 mb-3">
+                        T: {comp.tanks} | H: {comp.healers} | D: {comp.dps}
+                      </div>
+
+                      <div className="space-y-2 mb-3 min-h-[240px]">
+                        {group.members.map(member => (
+                          <div key={member.id} className="bg-slate-700 p-2 rounded flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className={`${getRoleColor(member.role)} w-3 h-3 rounded-full`}></span>
+                              <span className="text-white text-sm">{member.name}</span>
+                              <span className="text-slate-400 text-xs">({member.role})</span>
+                            </div>
+                            {isEditMode && (
+                              <button
+                                onClick={() => removeFromGroup(member.id, group.id)}
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {group.members.length < 6 && isEditMode && (
+                        <select
+                          onChange={(e) => {
+                            const member = unassignedMembers.find(m => m.id === e.target.value);
+                            if (member) {
+                              assignToGroup(member, group.id);
+                              e.target.value = '';
+                            }
+                          }}
+                          className="w-full px-3 py-2 bg-slate-700 text-white rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          defaultValue=""
+                        >
+                          <option value="" disabled>Add member...</option>
+                          {unassignedMembers.map(member => (
+                            <option key={member.id} value={member.id}>
+                              {member.name} ({member.role})
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'roster' && (
+          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+            <div className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="bg-slate-700 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-white">{stats.total}</div>
+                <div className="text-sm text-slate-400">Total Active</div>
+              </div>
+              <div className="bg-green-900/30 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-green-400">{stats.tanks}</div>
+                <div className="text-sm text-slate-400">Tanks</div>
+              </div>
+              <div className="bg-yellow-900/30 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-yellow-400">{stats.healers}</div>
+                <div className="text-sm text-slate-400">Healers</div>
+              </div>
+              <div className="bg-red-900/30 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-red-400">{stats.dps}</div>
+                <div className="text-sm text-slate-400">DPS</div>
+              </div>
+              <div className="bg-blue-900/30 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-blue-400">{stats.onDiscord}</div>
+                <div className="text-sm text-slate-400">On Discord</div>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="text-lg font-bold text-white mb-3">Class Distribution</h3>
+              <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
+                {Object.entries(classStats).map(([className, count]) => (
+                  count > 0 && (
+                    <div key={className} className="bg-slate-700 p-2 rounded text-center">
+                      <div className="text-lg font-bold text-purple-400">{count}</div>
+                      <div className="text-xs text-slate-400">{className}</div>
+                    </div>
+                  )
+                ))}
+              </div>
+            </div>
+
+            <h2 className="text-xl font-bold text-white mb-4">Active Roster</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-700">
+                    <th className="text-left text-slate-400 py-3 px-4">Name</th>
+                    <th className="text-left text-slate-400 py-3 px-4">Role</th>
+                    <th className="text-left text-slate-400 py-3 px-4">Weapon Combo</th>
+                    <th className="text-left text-slate-400 py-3 px-4">Class Name</th>
+                    <th className="text-left text-slate-400 py-3 px-4">Questlog</th>
+                    <th className="text-center text-slate-400 py-3 px-4">Events</th>
+                    <th className="text-center text-slate-400 py-3 px-4">Discord</th>
+                    <th className="text-center text-slate-400 py-3 px-4">Probation</th>
+                    {isEditMode && <th className="text-center text-slate-400 py-3 px-4">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeMembers.map(member => {
+                    const memberStats = getMemberStats(member.id);
+                    return (
+                      <tr key={member.id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <span className={`${getRoleColor(member.role)} w-3 h-3 rounded-full`}></span>
+                            <span className="text-white">{member.name}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <select
+                            value={member.role}
+                            onChange={(e) => updateMemberRole(member.id, e.target.value)}
+                            disabled={!isEditMode}
+                            className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+                          >
+                            <option value="TANK">Tank</option>
+                            <option value="HEALER">Healer</option>
+                            <option value="DPS">DPS</option>
+                            <option value="UNKNOWN">Unknown</option>
+                          </select>
+                        </td>
+                        <td className="py-3 px-4">
+                          <select
+                            value={member.weaponCombo}
+                            onChange={(e) => updateWeaponCombo(member.id, e.target.value)}
+                            disabled={!isEditMode}
+                            className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+                          >
+                            <option value="">Select...</option>
+                            {weaponCombos.map(combo => (
+                              <option key={combo} value={combo}>{combo}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="py-3 px-4">
+                          <input
+                            type="text"
+                            value={member.className}
+                            disabled
+                            className="w-full px-2 py-1 bg-slate-600 text-slate-300 text-sm rounded cursor-not-allowed"
+                          />
+                        </td>
+                        <td className="py-3 px-4">
+                          <input
+                            type="text"
+                            placeholder="Build link..."
+                            value={member.questlog}
+                            onChange={(e) => updateQuestlog(member.id, e.target.value)}
+                            disabled={!isEditMode}
+                            className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+                          />
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="text-white font-semibold">{memberStats.total}</span>
+                          <div className="text-xs text-slate-400">
+                            AB:{memberStats.archboss} PVP:{memberStats.pvp} S:{memberStats.siege}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={member.onDiscord}
+                            onChange={() => toggleDiscord(member.id)}
+                            disabled={!isEditMode}
+                            className="w-5 h-5 cursor-pointer disabled:cursor-not-allowed"
+                          />
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={member.onProbation}
+                            onChange={() => toggleProbation(member.id)}
+                            disabled={!isEditMode}
+                            className="w-5 h-5 cursor-pointer disabled:cursor-not-allowed"
+                          />
+                        </td>
+                        {isEditMode && (
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              onClick={() => removeMember(member.id)}
+                              className="text-red-400 hover:text-red-300"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {probationMembers.length > 0 && (
+              <>
+                <h2 className="text-xl font-bold text-orange-400 mb-4 mt-8">On Probation ({probationMembers.length})</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-slate-700">
+                        <th className="text-left text-slate-400 py-3 px-4">Name</th>
+                        <th className="text-left text-slate-400 py-3 px-4">Role</th>
+                        <th className="text-left text-slate-400 py-3 px-4">Weapon Combo</th>
+                        <th className="text-left text-slate-400 py-3 px-4">Class Name</th>
+                        <th className="text-left text-slate-400 py-3 px-4">Questlog</th>
+                        <th className="text-center text-slate-400 py-3 px-4">Discord</th>
+                        <th className="text-center text-slate-400 py-3 px-4">Probation</th>
+                        {isEditMode && <th className="text-center text-slate-400 py-3 px-4">Actions</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {probationMembers.map(member => (
+                        <tr key={member.id} className="border-b border-slate-700/50 hover:bg-slate-700/30 bg-orange-900/10">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <span className={`${getRoleColor(member.role)} w-3 h-3 rounded-full`}></span>
+                              <span className="text-white">{member.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <select
+                              value={member.role}
+                              onChange={(e) => updateMemberRole(member.id, e.target.value)}
+                              disabled={!isEditMode}
+                              className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+                            >
+                              <option value="TANK">Tank</option>
+                              <option value="HEALER">Healer</option>
+                              <option value="DPS">DPS</option>
+                              <option value="UNKNOWN">Unknown</option>
+                            </select>
+                          </td>
+                          <td className="py-3 px-4">
+                            <select
+                              value={member.weaponCombo}
+                              onChange={(e) => updateWeaponCombo(member.id, e.target.value)}
+                              disabled={!isEditMode}
+                              className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+                            >
+                              <option value="">Select...</option>
+                              {weaponCombos.map(combo => (
+                                <option key={combo} value={combo}>{combo}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="py-3 px-4">
+                            <input
+                              type="text"
+                              value={member.className}
+                              disabled
+                              className="w-full px-2 py-1 bg-slate-600 text-slate-300 text-sm rounded cursor-not-allowed"
+                            />
+                          </td>
+                          <td className="py-3 px-4">
+                            <input
+                              type="text"
+                              placeholder="Build link..."
+                              value={member.questlog}
+                              onChange={(e) => updateQuestlog(member.id, e.target.value)}
+                              disabled={!isEditMode}
+                              className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+                            />
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <input
+                              type="checkbox"
+                              checked={member.onDiscord}
+                              onChange={() => toggleDiscord(member.id)}
+                              disabled={!isEditMode}
+                              className="w-5 h-5 cursor-pointer disabled:cursor-not-allowed"
+                            />
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <input
+                              type="checkbox"
+                              checked={member.onProbation}
+                              onChange={() => toggleProbation(member.id)}
+                              disabled={!isEditMode}
+                              className="w-5 h-5 cursor-pointer disabled:cursor-not-allowed"
+                            />
+                          </td>
+                          {isEditMode && (
+                            <td className="py-3 px-4 text-center">
+                              <button
+                                onClick={() => removeMember(member.id)}
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        )}
