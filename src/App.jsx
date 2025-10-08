@@ -1002,25 +1002,26 @@ const handleLogin = () => {
                       </div>
 
                       {group.length < 6 && (
-                        <select
-                          onChange={(e) => {
-                            const member = unassignedMembers.find(m => m.id === e.target.value);
-                            if (member) {
-                              assignToGroup(member, groupIndex);
-                              e.target.value = '';
-                            }
-                          }}
-                          className="w-full px-3 py-2 bg-slate-700 text-white rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          defaultValue=""
-                        >
-                          <option value="" disabled>Add member...</option>
-                          {unassignedMembers.map(member => (
-                            <option key={member.id} value={member.id}>
-                              {member.name} ({member.role})
-                            </option>
-                          ))}
-                        </select>
-                      )}
+  <select
+    onChange={(e) => {
+      const memberId = parseInt(e.target.value); // Convert string to number
+      const member = unassignedMembers.find(m => m.id === memberId);
+      if (member) {
+        assignToGroup(member, groupIndex);
+        e.target.value = '';
+      }
+    }}
+    className="w-full px-3 py-2 bg-slate-700 text-white rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+    defaultValue=""
+  >
+    <option value="" disabled>Add member...</option>
+    {unassignedMembers.map(member => (
+      <option key={member.id} value={member.id}>
+        {member.name} ({member.role})
+      </option>
+    ))}
+  </select>
+)}
                     </div>
                   );
                 })}
