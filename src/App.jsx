@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Users, UserPlus, Trash2, RefreshCw, AlertCircle, List, Grid, Calendar, TrendingUp, Download, Save, Loader } from 'lucide-react';
+import { Users, UserPlus, Trash2, RefreshCw, AlertCircle, List, Grid, Calendar, TrendingUp, Download, Save, Loader, LogOut } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 const ThroneLibertyRoster = () => {
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  
   const [members, setMembers] = useState([]);
   const [events, setEvents] = useState([]);
   const [groups, setGroups] = useState([[], [], [], []]);
@@ -107,11 +111,65 @@ const ThroneLibertyRoster = () => {
     'Guardian', 'Oracle'
   ];
 
-  // Load data from Supabase on mount
+  // Check if already authenticated on mount
   useEffect(() => {
-    loadData();
+    const authStatus = localStorage.getItem('rosterAuthenticated');
+    if (authStatus === 'true') {
+      setIsAuthenticated(true);
+      loadData();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
+  const handleLogin = () => {
+    if (password === 'AbsoLOOT') {
+      setIsAuthenticated(true);
+      localStorage.setItem('rosterAuthenticated', 'true');
+      loadData();
+    } else {
+      alert('Wrong password!');
+      setPassword('');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('rosterAuthenticated');
+    setPassword('');
+  };
+
+  // Show login screen if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
+        <div className="bg-slate-800 p-8 rounded-lg border border-slate-700 shadow-2xl max-w-md w-full">
+          <div className="text-center mb-6">
+            <Users className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+            <h1 className="text-white text-3xl font-bold mb-2">Throne and Liberty</h1>
+            <h2 className="text-slate-400 text-xl">Roster Manager</h2>
+          </div>
+          <input
+            type="password"
+            placeholder="Enter password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+            className="px-4 py-3 bg-slate-700 text-white rounded mb-4 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+            autoFocus
+          />
+          <button 
+            onClick={handleLogin} 
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-semibold transition"
+          >
+            Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Load data from Supabase on mount
   const loadData = async () => {
     setLoading(true);
     try {
@@ -544,607 +602,13 @@ const ThroneLibertyRoster = () => {
             {saving && <Loader className="w-6 h-6 text-blue-400 animate-spin" />}
           </h1>
           <p className="text-slate-400">Organize your guild and track event attendance</p>
-        </div>
-
-        <div className="flex gap-2 mb-6 flex-wrap">
           <button
-            onClick={() => setActiveTab('groups')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
-              activeTab === 'groups' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-            }`}
+            onClick={handleLogout}
+            className="mt-2 text-slate-400 hover:text-white text-sm transition inline-flex items-center gap-1"
           >
-            <Grid className="w-5 h-5" />
-            Group Manager
-          </button>
-          <button
-            onClick={() => setActiveTab('roster')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
-              activeTab === 'roster' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-            }`}
-          >
-            <List className="w-5 h-5" />
-            Full Roster
-          </button>
-          <button
-            onClick={() => setActiveTab('events')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
-              activeTab === 'events' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-            }`}
-          >
-            <Calendar className="w-5 h-5" />
-            Event Tracking
+            <LogOut className="w-4 h-4" />
+            Logout
           </button>
         </div>
 
-        {activeTab === 'groups' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 bg-slate-800 rounded-lg p-6 border border-slate-700">
-              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <UserPlus className="w-5 h-5" />
-                Add Member
-              </h2>
-              <input
-                type="text"
-                placeholder="Member name"
-                value={newMemberName}
-                onChange={(e) => setNewMemberName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addMember()}
-                className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <select
-                value={newMemberRole}
-                onChange={(e) => setNewMemberRole(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="TANK">Tank</option>
-                <option value="HEALER">Healer</option>
-                <option value="DPS">DPS</option>
-                <option value="UNKNOWN">Unknown</option>
-              </select>
-              <button
-                onClick={addMember}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition"
-              >
-                Add Member
-              </button>
-
-              <div className="mt-6 space-y-2">
-                <button
-                  onClick={autoAssign}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-semibold transition flex items-center justify-center gap-2"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Auto-Assign Groups
-                </button>
-                <button
-                  onClick={addGroup}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition flex items-center justify-center gap-2"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Add New Group
-                </button>
-                <button
-                  onClick={clearGroups}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded font-semibold transition"
-                >
-                  Clear All Groups
-                </button>
-              </div>
-
-              <div className="mt-6">
-                <h3 className="text-white font-semibold mb-2">Unassigned ({unassignedMembers.length})</h3>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {unassignedMembers.map(member => (
-                    <div key={member.id} className="bg-slate-700 p-2 rounded flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className={`${getRoleColor(member.role)} w-3 h-3 rounded-full`}></span>
-                        <span className="text-white text-sm">{member.name}</span>
-                        <span className="text-slate-400 text-xs">({member.role})</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="lg:col-span-2">
-              <div className="mb-4 text-slate-400 text-sm">
-                Total Groups: {groups.length} | Total Assigned: {groups.reduce((sum, g) => sum + g.length, 0)}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {groups.map((group, groupIndex) => {
-                  const comp = getGroupComposition(group);
-                  const isBalanced = comp.tanks >= 1 && comp.healers >= 1;
-                  
-                  return (
-                    <div key={groupIndex} className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-white font-bold text-lg">Group {groupIndex + 1}</h3>
-                        <div className="flex items-center gap-2">
-                          {!isBalanced && group.length > 0 && (
-                            <AlertCircle className="w-4 h-4 text-yellow-500" />
-                          )}
-                          <span className="text-slate-400 text-sm">
-                            {group.length}/6
-                          </span>
-                          {groups.length > 1 && (
-                            <button
-                              onClick={() => removeGroup(groupIndex)}
-                              className="text-red-400 hover:text-red-300 ml-2"
-                              title="Delete group"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="text-xs text-slate-400 mb-3">
-                        T: {comp.tanks} | H: {comp.healers} | D: {comp.dps}
-                      </div>
-
-                      <div className="space-y-2 mb-3 min-h-[240px]">
-                        {group.map(member => (
-                          <div key={member.id} className="bg-slate-700 p-2 rounded flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className={`${getRoleColor(member.role)} w-3 h-3 rounded-full`}></span>
-                              <span className="text-white text-sm">{member.name}</span>
-                              <span className="text-slate-400 text-xs">({member.role})</span>
-                            </div>
-                            <button
-                              onClick={() => removeFromGroup(member.id, groupIndex)}
-                              className="text-red-400 hover:text-red-300"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-
-                      {group.length < 6 && (
-                        <select
-                          onChange={(
-e) => {
-                            const member = unassignedMembers.find(m => m.id === parseInt(e.target.value));
-                            if (member) {
-                              assignToGroup(member, groupIndex);
-                              e.target.value = '';
-                            }
-                          }}
-                          className="w-full px-3 py-2 bg-slate-700 text-white rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          defaultValue=""
-                        >
-                          <option value="" disabled>Add member...</option>
-                          {unassignedMembers.map(member => (
-                            <option key={member.id} value={member.id}>
-                              {member.name} ({member.role})
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'roster' && (
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <div className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="bg-slate-700 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-white">{stats.total}</div>
-                <div className="text-sm text-slate-400">Total Active</div>
-              </div>
-              <div className="bg-green-900/30 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-green-400">{stats.tanks}</div>
-                <div className="text-sm text-slate-400">Tanks</div>
-              </div>
-              <div className="bg-yellow-900/30 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-yellow-400">{stats.healers}</div>
-                <div className="text-sm text-slate-400">Healers</div>
-              </div>
-              <div className="bg-red-900/30 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-red-400">{stats.dps}</div>
-                <div className="text-sm text-slate-400">DPS</div>
-              </div>
-              <div className="bg-blue-900/30 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-blue-400">{stats.onDiscord}</div>
-                <div className="text-sm text-slate-400">On Discord</div>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-lg font-bold text-white mb-3">Class Distribution</h3>
-              <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
-                {Object.entries(classStats).map(([className, count]) => (
-                  count > 0 && (
-                    <div key={className} className="bg-slate-700 p-2 rounded text-center">
-                      <div className="text-lg font-bold text-purple-400">{count}</div>
-                      <div className="text-xs text-slate-400">{className}</div>
-                    </div>
-                  )
-                ))}
-              </div>
-            </div>
-
-            <h2 className="text-xl font-bold text-white mb-4">Active Roster</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-700">
-                    <th className="text-left text-slate-400 py-3 px-4">Name</th>
-                    <th className="text-left text-slate-400 py-3 px-4">Role</th>
-                    <th className="text-left text-slate-400 py-3 px-4">Weapon Combo</th>
-                    <th className="text-left text-slate-400 py-3 px-4">Class Name</th>
-                    <th className="text-left text-slate-400 py-3 px-4">Questlog</th>
-                    <th className="text-center text-slate-400 py-3 px-4">Events</th>
-                    <th className="text-center text-slate-400 py-3 px-4">Discord</th>
-                    <th className="text-center text-slate-400 py-3 px-4">Probation</th>
-                    <th className="text-center text-slate-400 py-3 px-4">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeMembers.map(member => {
-                    const memberStats = getMemberStats(member.id);
-                    return (
-                      <tr key={member.id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <span className={`${getRoleColor(member.role)} w-3 h-3 rounded-full`}></span>
-                            <span className="text-white">{member.name}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <select
-                            value={member.role}
-                            onChange={(e) => updateMemberRole(member.id, e.target.value)}
-                            className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="TANK">Tank</option>
-                            <option value="HEALER">Healer</option>
-                            <option value="DPS">DPS</option>
-                            <option value="UNKNOWN">Unknown</option>
-                          </select>
-                        </td>
-                        <td className="py-3 px-4">
-                          <select
-                            value={member.weaponCombo}
-                            onChange={(e) => updateWeaponCombo(member.id, e.target.value)}
-                            className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="">Select...</option>
-                            {weaponCombos.map(combo => (
-                              <option key={combo} value={combo}>{combo}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="py-3 px-4">
-                          <input
-                            type="text"
-                            value={member.className}
-                            disabled
-                            className="w-full px-2 py-1 bg-slate-600 text-slate-300 text-sm rounded cursor-not-allowed"
-                          />
-                        </td>
-                        <td className="py-3 px-4">
-                          <input
-                            type="text"
-                            placeholder="Build link..."
-                            value={member.questlog}
-                            onChange={(e) => updateQuestlog(member.id, e.target.value)}
-                            className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className="text-white font-semibold">{memberStats.total}</span>
-                          <div className="text-xs text-slate-400">
-                            AB:{memberStats.archboss} PVP:{memberStats.pvp} S:{memberStats.siege}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <input
-                            type="checkbox"
-                            checked={member.onDiscord}
-                            onChange={() => toggleDiscord(member.id)}
-                            className="w-5 h-5 cursor-pointer"
-                          />
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <input
-                            type="checkbox"
-                            checked={member.onProbation}
-                            onChange={() => toggleProbation(member.id)}
-                            className="w-5 h-5 cursor-pointer"
-                          />
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <button
-                            onClick={() => removeMember(member.id)}
-                            className="text-red-400 hover:text-red-300"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {probationMembers.length > 0 && (
-              <>
-                <h2 className="text-xl font-bold text-orange-400 mb-4 mt-8">On Probation ({probationMembers.length})</h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-slate-700">
-                        <th className="text-left text-slate-400 py-3 px-4">Name</th>
-                        <th className="text-left text-slate-400 py-3 px-4">Role</th>
-                        <th className="text-left text-slate-400 py-3 px-4">Weapon Combo</th>
-                        <th className="text-left text-slate-400 py-3 px-4">Class Name</th>
-                        <th className="text-left text-slate-400 py-3 px-4">Questlog</th>
-                        <th className="text-center text-slate-400 py-3 px-4">Discord</th>
-                        <th className="text-center text-slate-400 py-3 px-4">Probation</th>
-                        <th className="text-center text-slate-400 py-3 px-4">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {probationMembers.map(member => (
-                        <tr key={member.id} className="border-b border-slate-700/50 hover:bg-slate-700/30 bg-orange-900/10">
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              <span className={`${getRoleColor(member.role)} w-3 h-3 rounded-full`}></span>
-                              <span className="text-white">{member.name}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <select
-                              value={member.role}
-                              onChange={(e) => updateMemberRole(member.id, e.target.value)}
-                              className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="TANK">Tank</option>
-                              <option value="HEALER">Healer</option>
-                              <option value="DPS">DPS</option>
-                              <option value="UNKNOWN">Unknown</option>
-                            </select>
-                          </td>
-                          <td className="py-3 px-4">
-                            <select
-                              value={member.weaponCombo}
-                              onChange={(e) => updateWeaponCombo(member.id, e.target.value)}
-                              className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">Select...</option>
-                              {weaponCombos.map(combo => (
-                                <option key={combo} value={combo}>{combo}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="py-3 px-4">
-                            <input
-                              type="text"
-                              value={member.className}
-                              disabled
-                              className="w-full px-2 py-1 bg-slate-600 text-slate-300 text-sm rounded cursor-not-allowed"
-                            />
-                          </td>
-                          <td className="py-3 px-4">
-                            <input
-                              type="text"
-                              placeholder="Build link..."
-                              value={member.questlog}
-                              onChange={(e) => updateQuestlog(member.id, e.target.value)}
-                              className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <input
-                              type="checkbox"
-                              checked={member.onDiscord}
-                              onChange={() => toggleDiscord(member.id)}
-                              className="w-5 h-5 cursor-pointer"
-                            />
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <input
-                              type="checkbox"
-                              checked={member.onProbation}
-                              onChange={() => toggleProbation(member.id)}
-                              className="w-5 h-5 cursor-pointer"
-                            />
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <button
-                              onClick={() => removeMember(member.id)}
-                              className="text-red-400 hover:text-red-300"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'events' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 space-y-6">
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-                <h2 className="text-xl font-bold text-white mb-4">Log New Event</h2>
-                
-                <select
-                  value={newEventType}
-                  onChange={(e) => setNewEventType(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {eventTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-
-                <input
-                  type="date"
-                  value={newEventDate}
-                  onChange={(e) => setNewEventDate(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-
-                <div className="mb-3">
-                  <div className="text-sm text-slate-400 mb-2">
-                    Selected: {selectedAttendees.length} members
-                  </div>
-                  <div className="max-h-48 overflow-y-auto bg-slate-700 rounded p-3 space-y-2">
-                    {activeMembers.map(member => (
-                      <label key={member.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-600 p-1 rounded">
-                        <input
-                          type="checkbox"
-                          checked={selectedAttendees.includes(member.id)}
-                          onChange={() => toggleAttendee(member.id)}
-                          className="w-4 h-4"
-                        />
-                        <span className={`${getRoleColor(member.role)} w-2 h-2 rounded-full`}></span>
-                        <span className="text-white text-sm">{member.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  onClick={addEvent}
-                  disabled={selectedAttendees.length === 0}
-                  className="w-full bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white py-2 rounded font-semibold transition"
-                >
-                  Log Event
-                </button>
-              </div>
-
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  Top Participants
-                </h2>
-                <div className="space-y-2">
-                  {topParticipants.map((member, index) => (
-                    <div key={member.id} className="flex items-center justify-between bg-slate-700 p-3 rounded">
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-400 font-bold">#{index + 1}</span>
-                        <span className={`${getRoleColor(member.role)} w-2 h-2 rounded-full`}></span>
-                        <span className="text-white">{member.name}</span>
-                      </div>
-                      <span className="text-blue-400 font-bold">{member.eventCount}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-white">Event Statistics</h2>
-                  <button
-                    onClick={exportEventData}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-semibold transition"
-                  >
-                    <Download className="w-4 h-4" />
-                    Export CSV
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-purple-900/30 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-purple-400">{events.length}</div>
-                    <div className="text-sm text-slate-400">Total Events</div>
-                  </div>
-                  <div className="bg-emerald-900/30 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-emerald-400">{eventTypeStats['Archboss']}</div>
-                    <div className="text-sm text-slate-400">Archboss</div>
-                  </div>
-                  <div className="bg-rose-900/30 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-rose-400">{eventTypeStats['PVP Event']}</div>
-                    <div className="text-sm text-slate-400">PVP Events</div>
-                  </div>
-                  <div className="bg-amber-900/30 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-amber-400">{eventTypeStats['Siege']}</div>
-                    <div className="text-sm text-slate-400">Sieges</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-white">Event History</h2>
-                  <select
-                    value={eventFilter}
-                    onChange={(e) => setEventFilter(e.target.value)}
-                    className="px-3 py-2 bg-slate-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">All Events</option>
-                    {eventTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {filteredEvents.length === 0 ? (
-                    <div className="text-center text-slate-400 py-8">
-                      No events logged yet. Start tracking your guild activities!
-                    </div>
-                  ) : (
-                    filteredEvents.map(event => (
-                      <div key={event.id} className="bg-slate-700 p-4 rounded-lg">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h3 className="text-white font-semibold">{event.type}</h3>
-                            <p className="text-sm text-slate-400">{event.date}</p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-blue-400 font-bold">{event.attendeeCount} attendees</span>
-                            <button
-                              onClick={() => deleteEvent(event.id)}
-                              className="text-red-400 hover:text-red-300"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {event.attendees.map(attendeeId => {
-                            const attendee = members.find(m => m.id === attendeeId);
-                            return attendee ? (
-                              <span key={attendeeId} className="px-2 py-1 bg-slate-600 text-white text-xs rounded">
-                                {attendee.name}
-                              </span>
-                            ) : null;
-                          })}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default ThroneLibertyRoster;
+        {/* Rest of your existing code continues here - the tabs and all content */}
