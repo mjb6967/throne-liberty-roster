@@ -60,17 +60,6 @@ const ThroneLibertyRoster = () => {
     'Guardian', 'Oracle'
   ];
 
-  // Check if already authenticated on mount
-  useEffect(() => {
-    const authStatus = localStorage.getItem('rosterAuthenticated');
-    if (authStatus === 'true') {
-      setIsAuthenticated(true);
-      loadData();
-    } else {
-      setLoading(false);
-    }
-  }, []);
-
   const handleLogin = () => {
     if (password === 'AbsoLOOT') {
       setIsAuthenticated(true);
@@ -556,7 +545,18 @@ const ThroneLibertyRoster = () => {
     a.download = 'event-attendance.csv';
     a.click();
   };
-
+  
+ // Check if already authenticated on mount
+  useEffect(() => {
+    const authStatus = localStorage.getItem('rosterAuthenticated');
+    if (authStatus === 'true') {
+      setIsAuthenticated(true);
+      loadData();
+    } else {
+      setLoading(false);
+    }
+  }, []);
+  
   const activeMembers = members.filter(m => !m.onProbation);
   const probationMembers = members.filter(m => m.onProbation);
   const unassignedMembers = activeMembers.filter(m => 
