@@ -536,14 +536,25 @@ const handleLogin = () => {
     await saveMember(updatedMember);
   };
 
-  const assignToGroup = async (member, groupIndex) => {
-    if (groups[groupIndex].length >= 6 || member.onProbation) return;
-    
-    const newGroups = groups.map((g, i) => 
-      i === groupIndex ? [...g, member] : g.filter(m => m.id !== member.id)
-    );
-    await saveGroups(newGroups);
-  };
+ const assignToGroup = async (member, groupIndex) => {
+  if (groups[groupIndex].length >= 6 || member.onProbation) return;
+  
+  // Ensure the member object has all required properties
+  const fullMember = members.find(m => m.id === member.id);
+  if (!fullMember) return;
+  
+  const newGroups = groups.map((g, i) => {
+    if (i === groupIndex) {
+      // Add member to this group
+      return [...g, fullMember];
+    } else {
+      // Remove member from other groups
+      return g.filter(m => m.id !== fullMember.id);
+    }
+  });
+  
+  await saveGroups(newGroups);
+};
 
   const removeFromGroup = async (memberId, groupIndex) => {
     const newGroups = [...groups];
