@@ -60,36 +60,6 @@ const ThroneLibertyRoster = () => {
     'Guardian', 'Oracle'
   ];
 
-  // Show login screen if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
-        <div className="bg-slate-800 p-8 rounded-lg border border-slate-700 shadow-2xl max-w-md w-full">
-          <div className="text-center mb-6">
-            <Users className="w-16 h-16 text-blue-500 mx-auto mb-4" />
-            <h1 className="text-white text-3xl font-bold mb-2">Throne and Liberty</h1>
-            <h2 className="text-slate-400 text-xl">Roster Manager</h2>
-          </div>
-          <input
-            type="password"
-            placeholder="Enter password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-            className="px-4 py-3 bg-slate-700 text-white rounded mb-4 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-            autoFocus
-          />
-          <button 
-            onClick={handleLogin} 
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-semibold transition"
-          >
-            Login
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   // Load groups from database
   const loadGroupsFromDB = async (membersList) => {
     try {
@@ -600,6 +570,36 @@ const handleLogin = () => {
     return stats;
   };
 
+// Show login screen if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
+        <div className="bg-slate-800 p-8 rounded-lg border border-slate-700 shadow-2xl max-w-md w-full">
+          <div className="text-center mb-6">
+            <Users className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+            <h1 className="text-white text-3xl font-bold mb-2">Throne and Liberty</h1>
+            <h2 className="text-slate-400 text-xl">Roster Manager</h2>
+          </div>
+          <input
+            type="password"
+            placeholder="Enter password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+            className="px-4 py-3 bg-slate-700 text-white rounded mb-4 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+            autoFocus
+          />
+          <button 
+            onClick={handleLogin} 
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-semibold transition"
+          >
+            Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
