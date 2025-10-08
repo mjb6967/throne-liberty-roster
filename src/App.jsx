@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Users, UserPlus, Trash2, RefreshCw, AlertCircle, List, Grid, Calendar, TrendingUp, Download, Save, Loader, LogOut } from 'lucide-react';
 import { supabase } from './supabaseClient';
+import { Package } from 'lucide-react';
 
 const ThroneLibertyRoster = () => {
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  
+  const [items, setItems] = useState([]);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemType, setNewItemType] = useState('Weapon');
+  const [draggedMember, setDraggedMember] = useState(null);
+
+  const itemTypes = ['Weapon', 'Armor', 'Accessory', 'Material', 'Other'];
   const [members, setMembers] = useState([]);
   const [events, setEvents] = useState([]);
   const [groups, setGroups] = useState([[], [], [], []]);
@@ -102,6 +108,7 @@ const ThroneLibertyRoster = () => {
   // Load all data from Supabase
   const loadData = async () => {
     setLoading(true);
+    await loadItems();
     try {
       // Load members
       const { data: membersData, error: membersError } = await supabase
@@ -156,6 +163,182 @@ const ThroneLibertyRoster = () => {
     }
   };
 
+  const loadItems = async () => {
+  try {
+    const { data: itemsData, error: itemsError } = await supabase
+      .from('items')
+      .select(`
+        *,
+        item_seekers(member_id, received)
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (itemsError) throw itemsError;
+    
+    if (itemsData) {
+      setItems(itemsData.map(item => ({
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        seekers: item.item_seekers.map(s => ({
+          memberId: s.member_id,
+          received: s.received
+        }))
+      })));
+    }
+  } catch (error) {
+    console.error('Error loading items:', error);
+  }
+};
+
+
+// Add item
+const addItem = async () => {
+  if (newItemName.trim()) {
+    try {
+      const { data, error } = await supabase
+        .from('items')
+        .insert({
+          name: newItemName.trim(),
+          type: newItemType
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      const newItem = {
+        id: data.id,
+        name: data.name,
+        type: data.type,
+        seekers: []
+      };
+      
+      setItems([newItem, ...items]);
+      setNewItemName('');
+    } catch (error) {
+      console.error('Error adding item:', error);
+      alert('Error adding item. Please try again.');
+    }
+  }
+};
+
+// Delete item
+const deleteItem = async (itemId) => {
+  try {
+    const { error } = await supabase
+      .from('items')
+      .delete()
+      .eq('id', itemId);
+    
+    if (error) throw error;
+    
+    setItems(items.filter(i => i.id !== itemId));
+  } catch (error) {
+    console.error('Error deleting item:', error);
+    alert('Error deleting item. Please try again.');
+  }
+};
+
+// Add seeker to item
+const addSeekerToItem = async (itemId, memberId) => {
+  const item = items.find(i => i.id === itemId);
+  if (!item || item.seekers.some(s => s.memberId === memberId)) return;
+  
+  try {
+    const { error } = await supabase
+      .from('item_seekers')
+      .insert({
+        item_id: itemId,
+        member_id: memberId,
+        received: false
+      });
+    
+    if (error) throw error;
+    
+    setItems(items.map(i => 
+      i.id === itemId 
+        ? { ...i, seekers: [...i.seekers, { memberId, received: false }] }
+        : i
+    ));
+  } catch (error) {
+    console.error('Error adding seeker:', error);
+    alert('Error adding seeker. Please try again.');
+  }
+};
+
+// Remove seeker from item
+const removeSeekerFromItem = async (itemId, memberId) => {
+  try {
+    const { error } = await supabase
+      .from('item_seekers')
+      .delete()
+      .eq('item_id', itemId)
+      .eq('member_id', memberId);
+    
+    if (error) throw error;
+    
+    setItems(items.map(i => 
+      i.id === itemId 
+        ? { ...i, seekers: i.seekers.filter(s => s.memberId !== memberId) }
+        : i
+    ));
+  } catch (error) {
+    console.error('Error removing seeker:', error);
+    alert('Error removing seeker. Please try again.');
+  }
+};
+
+// Toggle received status
+const toggleReceivedStatus = async (itemId, memberId) => {
+  const item = items.find(i => i.id === itemId);
+  const seeker = item?.seekers.find(s => s.memberId === memberId);
+  if (!seeker) return;
+  
+  try {
+    const { error } = await supabase
+      .from('item_seekers')
+      .update({ received: !seeker.received })
+      .eq('item_id', itemId)
+      .eq('member_id', memberId);
+    
+    if (error) throw error;
+    
+    setItems(items.map(i => 
+      i.id === itemId 
+        ? {
+            ...i,
+            seekers: i.seekers.map(s => 
+              s.memberId === memberId 
+                ? { ...s, received: !s.received }
+                : s
+            )
+          }
+        : i
+    ));
+  } catch (error) {
+    console.error('Error updating received status:', error);
+    alert('Error updating status. Please try again.');
+  }
+};
+
+// Drag and drop handlers
+const handleDragStart = (member) => {
+  setDraggedMember(member);
+};
+
+const handleDragOver = (e) => {
+  e.preventDefault();
+};
+
+const handleDrop = async (e, itemId) => {
+  e.preventDefault();
+  if (draggedMember) {
+    await addSeekerToItem(itemId, draggedMember.id);
+    setDraggedMember(null);
+  }
+};
+  
 const handleLogin = () => {
     if (password === 'AbsoLOOT') {
       setIsAuthenticated(true);
@@ -658,6 +841,17 @@ const handleLogin = () => {
             <List className="w-5 h-5" />
             Full Roster
           </button>
+          <button
+  onClick={() => setActiveTab('items')}
+  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
+    activeTab === 'items' 
+      ? 'bg-blue-600 text-white' 
+      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+  }`}
+>
+  <Package className="w-5 h-5" />
+  Item Tracking
+</button>
           <button
             onClick={() => setActiveTab('events')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
@@ -1230,8 +1424,157 @@ const handleLogin = () => {
             </div>
           </div>
         )}
+
+
+    {activeTab === 'items' && (
+  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    {/* Left sidebar - Add item & Available members */}
+    <div className="lg:col-span-1 space-y-6">
+      <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+        <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+          <Package className="w-5 h-5" />
+          Add Item
+        </h2>
+        <input
+          type="text"
+          placeholder="Item name"
+          value={newItemName}
+          onChange={(e) => setNewItemName(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && addItem()}
+          className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <select
+          value={newItemType}
+          onChange={(e) => setNewItemType(e.target.value)}
+          className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {itemTypes.map(type => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+        <button
+          onClick={addItem}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition"
+        >
+          Add Item
+        </button>
+      </div>
+
+      <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+        <h3 className="text-white font-semibold mb-3">Drag Members to Items</h3>
+        <p className="text-slate-400 text-sm mb-3">Drag a member onto an item card to add them as a seeker</p>
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {activeMembers.map(member => (
+            <div
+              key={member.id}
+              draggable
+              onDragStart={() => handleDragStart(member)}
+              className="bg-slate-700 p-3 rounded cursor-move hover:bg-slate-600 transition"
+            >
+              <div className="flex items-center gap-2">
+                <span className={`${getRoleColor(member.role)} w-3 h-3 rounded-full`}></span>
+                <span className="text-white text-sm">{member.name}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
+
+    {/* Right side - Item cards */}
+    <div className="lg:col-span-3">
+      <div className="mb-4 text-slate-400 text-sm">
+        Total Items: {items.length}
+      </div>
+      
+      {items.length === 0 ? (
+        <div className="bg-slate-800 rounded-lg p-12 border border-slate-700 text-center">
+          <Package className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+          <p className="text-slate-400 text-lg">No items tracked yet</p>
+          <p className="text-slate-500 text-sm">Add items using the form on the left</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {items.map(item => {
+            const receivedCount = item.seekers.filter(s => s.received).length;
+            const totalSeekers = item.seekers.length;
+            
+            return (
+              <div
+                key={item.id}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, item.id)}
+                className="bg-slate-800 rounded-lg p-4 border-2 border-slate-700 hover:border-blue-500 transition"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h3 className="text-white font-bold text-lg mb-1">{item.name}</h3>
+                    <span className="inline-block px-2 py-1 bg-purple-600 text-white text-xs rounded">
+                      {item.type}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => deleteItem(item.id)}
+                    className="text-red-400 hover:text-red-300"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="mb-3 text-sm text-slate-400">
+                  {receivedCount} / {totalSeekers} received
+                </div>
+
+                <div className="space-y-2">
+                  {item.seekers.length === 0 ? (
+                    <p className="text-slate-500 text-sm italic py-2">
+                      Drag members here to add seekers
+                    </p>
+                  ) : (
+                    item.seekers.map(seeker => {
+                      const member = members.find(m => m.id === seeker.memberId);
+                      if (!member) return null;
+                      
+                      return (
+                        <div
+                          key={seeker.memberId}
+                          className={`p-2 rounded flex items-center justify-between ${
+                            seeker.received 
+                              ? 'bg-green-900/30 border border-green-700' 
+                              : 'bg-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 flex-1">
+                            <input
+                              type="checkbox"
+                              checked={seeker.received}
+                              onChange={() => toggleReceivedStatus(item.id, seeker.memberId)}
+                              className="w-4 h-4 cursor-pointer"
+                            />
+                            <span className={`${getRoleColor(member.role)} w-2 h-2 rounded-full`}></span>
+                            <span className={`text-sm ${seeker.received ? 'text-green-300 line-through' : 'text-white'}`}>
+                              {member.name}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => removeSeekerFromItem(item.id, seeker.memberId)}
+                            className="text-red-400 hover:text-red-300"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  </div>
+)}
   );
 };
 
