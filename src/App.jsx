@@ -60,23 +60,6 @@ const ThroneLibertyRoster = () => {
     'Guardian', 'Oracle'
   ];
 
-  const handleLogin = () => {
-    if (password === 'AbsoLOOT') {
-      setIsAuthenticated(true);
-      localStorage.setItem('rosterAuthenticated', 'true');
-      loadData();
-    } else {
-      alert('Wrong password!');
-      setPassword('');
-    }
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    localStorage.removeItem('rosterAuthenticated');
-    setPassword('');
-  };
-
   // Show login screen if not authenticated
   if (!isAuthenticated) {
     return (
@@ -203,12 +186,29 @@ const ThroneLibertyRoster = () => {
     }
   };
 
+const handleLogin = () => {
+    if (password === 'AbsoLOOT') {
+      setIsAuthenticated(true);
+      localStorage.setItem('rosterAuthenticated', 'true');
+      loadData();
+    } else {
+      alert('Wrong password!');
+      setPassword('');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('rosterAuthenticated');
+    setPassword('');
+  };
+  
   // Save groups to database
   const saveGroups = async (newGroups) => {
     setSaving(true);
     try {
       // Delete existing groups
-      await supabase.from('groups').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('groups').delete().neq('id', 0);
       
       // Insert new groups
       const groupRecords = [];
