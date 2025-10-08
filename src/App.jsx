@@ -169,59 +169,133 @@ const ThroneLibertyRoster = () => {
     );
   }
 
-  // Load data from Supabase on mount
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      // Load members
-      const { data: membersData, error: membersError } = await supabase
-        .from('members')
-        .select('*')
-        .order('name');
-      
-      if (membersError) throw membersError;
-      
-      if (membersData) {
-        setMembers(membersData.map(m => ({
-          id: m.id,
-          name: m.name,
-          role: m.role,
-          onDiscord: m.on_discord,
-          onProbation: m.on_probation,
-          questlog: m.questlog || '',
-          weaponCombo: m.weapon_combo || '',
-          className: m.class_name || ''
-        })));
-      }
-
-      // Load events with attendees
-      const { data: eventsData, error: eventsError } = await supabase
-        .from('events')
-        .select(`
-          *,
-          event_attendees(member_id)
-        `)
-        .order('date', { ascending: false });
-      
-      if (eventsError) throw eventsError;
-      
-      if (eventsData) {
-        setEvents(eventsData.map(e => ({
-          id: e.id,
-          type: e.type,
-          date: e.date,
-          attendees: e.event_attendees.map(a => a.member_id),
-          attendeeCount: e.attendee_count
-        })));
-      }
-
-    } catch (error) {
-      console.error('Error loading data:', error);
-      alert('Error loading data. Please refresh the page.');
-    } finally {
-      setLoading(false);
+ const loadData = async () => {
+  setLoading(true);
+  try {
+    // Load members
+    const { data: membersData, error: membersError } = await supabase
+      .from('members')
+      .select('*')
+      .order('name');
+    
+    if (membersError) throw membersError;
+    
+    if (membersData) {
+      const loadedMembers = membersData.map(m => ({
+        id: m.id,
+        name: m.name,
+        role: m.role,
+        onDiscord: m.on_discord,
+        onProbation: m.on_probation,
+        questlog: m.questlog || '',
+        weaponCombo: m.weapon_combo || '',
+        className: m.class_name || ''
+      }));
+      setMembers(loadedMembers);
     }
-  };
+
+    // Load events with attendees
+    const { data: eventsData, error: eventsError } = await supabase
+      .from('events')
+      .select(`
+        *,
+        event_attendees(member_id)
+      `)
+      .order('date', { ascending: false });
+    
+    if (eventsError) throw eventsError;
+    
+    if (eventsData) {
+      setEvents(eventsData.map(e => ({
+        id: e.id,
+        type: e.type,
+        date: e.date,
+        attendees: e.event_attendees.map(a => a.member_id),
+        attendeeCount: e.attendee_count
+      })));
+    }
+
+    // NEW: Load groups AFTER members are loaded
+    await loadGroupsFromDB(membersData);
+
+  } catch (error) {
+    console.error('Error loading data:', error);
+    alert('Error loading data. Please refresh the page.');
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const loadGroupsFromDB = async (membersList) => {
+  try {
+    const { data, error } = await supabase
+      .from('groups')
+      .select('*')
+      .order('group_index')
+      .order('position');
+    
+    if (error) throw error;
+    
+    if (data && data.length > 0) {
+      const maxGroupIndex = Math.max(...data.map(g => g.group_index), -1);
+      const groupsArray = Array(maxGroupIndex + 1).fill(null).map(() => []);
+      
+      data.forEach(groupMember => {
+        const member = membersList.find(m => m.id === groupMember.member_id);
+        if (member) {
+          const memberObj = {
+            id: member.id,
+            name: member.name,
+            role: member.role,
+            onDiscord: member.on_discord,
+            onProbation: member.on_probation,
+            questlog: member.questlog || '',
+            weaponCombo: member.weapon_combo || '',
+            className: member.class_name || ''
+          };
+          groupsArray[groupMember.group_index].push(memberObj);
+        }
+      });
+      
+      setGroups(groupsArray);
+    }
+  } catch (error) {
+    console.error('Error loading groups:', error);
+    // Keep default 4 empty groups if load fails
+  }
+};
+// 3. ADD this new function after loadGroupsFromDB
+const saveGroups = async (newGroups) => {
+  setSaving(true);
+  try {
+    // Delete existing groups
+    await supabase.from('groups').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    
+    // Insert new groups
+    const groupRecords = [];
+    newGroups.forEach((group, groupIndex) => {
+      group.forEach((member, position) => {
+        groupRecords.push({
+          group_index: groupIndex,
+          member_id: member.id,
+          position: position
+        });
+      });
+    });
+    
+    if (groupRecords.length > 0) {
+      const { error } = await supabase.from('groups').insert(groupRecords);
+      if (error) throw error;
+    }
+    
+    setGroups(newGroups);
+  } catch (error) {
+    console.error('Error saving groups:', error);
+    alert('Error saving groups. Please try again.');
+  } finally {
+    setSaving(false);
+  }
+};
 
   const saveMember = async (member) => {
     setSaving(true);
@@ -248,15 +322,18 @@ const ThroneLibertyRoster = () => {
     }
   };
 
-  const addGroup = () => {
-    setGroups([...groups, []]);
-  };
+// 4. REPLACE addGroup function (around line 233)
+const addGroup = async () => {
+  await saveGroups([...groups, []]);
+};
 
-  const removeGroup = (groupIndex) => {
-    if (groups.length <= 1) return;
-    const newGroups = groups.filter((_, index) => index !== groupIndex);
-    setGroups(newGroups);
-  };
+// 5. REPLACE removeGroup function (around line 237)
+const removeGroup = async (groupIndex) => {
+  if (groups.length <= 1) return;
+  const newGroups = groups.filter((_, index) => index !== groupIndex);
+  await saveGroups(newGroups);
+};
+
 
   const addMember = async () => {
     if (newMemberName.trim()) {
@@ -370,56 +447,59 @@ const ThroneLibertyRoster = () => {
     await saveMember(updatedMember);
   };
 
-  const assignToGroup = (member, groupIndex) => {
-    if (groups[groupIndex].length >= 6 || member.onProbation) return;
-    
-    const newGroups = groups.map((g, i) => 
-      i === groupIndex ? [...g, member] : g.filter(m => m.id !== member.id)
-    );
-    setGroups(newGroups);
-  };
+// 6. REPLACE assignToGroup function (around line 362)
+const assignToGroup = async (member, groupIndex) => {
+  if (groups[groupIndex].length >= 6 || member.onProbation) return;
+  
+  const newGroups = groups.map((g, i) => 
+    i === groupIndex ? [...g, member] : g.filter(m => m.id !== member.id)
+  );
+  await saveGroups(newGroups);
+};
 
-  const removeFromGroup = (memberId, groupIndex) => {
-    const newGroups = [...groups];
-    newGroups[groupIndex] = newGroups[groupIndex].filter(m => m.id !== memberId);
-    setGroups(newGroups);
-  };
+// 7. REPLACE removeFromGroup function (around line 370)
+const removeFromGroup = async (memberId, groupIndex) => {
+  const newGroups = [...groups];
+  newGroups[groupIndex] = newGroups[groupIndex].filter(m => m.id !== memberId);
+  await saveGroups(newGroups);
+};
 
-  const autoAssign = () => {
-    const activeMembers = members.filter(m => !m.onProbation);
-    const unassigned = activeMembers.filter(m => 
-      !groups.some(g => g.some(gm => gm.id === m.id))
-    );
-    
-    const tanks = unassigned.filter(m => m.role === 'TANK');
-    const healers = unassigned.filter(m => m.role === 'HEALER');
-    const dps = unassigned.filter(m => m.role === 'DPS');
-    const unknown = unassigned.filter(m => m.role === 'UNKNOWN');
-    
-    const numGroups = groups.length;
-    const newGroups = Array(numGroups).fill(null).map(() => []);
-    
-    for (let i = 0; i < numGroups; i++) {
-      if (tanks[i]) newGroups[i].push(tanks[i]);
-      if (healers[i]) newGroups[i].push(healers[i]);
+// 8. REPLACE autoAssign function (around line 376)
+const autoAssign = async () => {
+  const activeMembers = members.filter(m => !m.onProbation);
+  const unassigned = activeMembers.filter(m => 
+    !groups.some(g => g.some(gm => gm.id === m.id))
+  );
+  
+  const tanks = unassigned.filter(m => m.role === 'TANK');
+  const healers = unassigned.filter(m => m.role === 'HEALER');
+  const dps = unassigned.filter(m => m.role === 'DPS');
+  const unknown = unassigned.filter(m => m.role === 'UNKNOWN');
+  
+  const numGroups = groups.length;
+  const newGroups = Array(numGroups).fill(null).map(() => []);
+  
+  for (let i = 0; i < numGroups; i++) {
+    if (tanks[i]) newGroups[i].push(tanks[i]);
+    if (healers[i]) newGroups[i].push(healers[i]);
+  }
+  
+  let groupIndex = 0;
+  [...dps, ...unknown].forEach(member => {
+    while (newGroups[groupIndex].length >= 6 && groupIndex < numGroups - 1) {
+      groupIndex++;
     }
-    
-    let groupIndex = 0;
-    [...dps, ...unknown].forEach(member => {
-      while (newGroups[groupIndex].length >= 6 && groupIndex < numGroups - 1) {
-        groupIndex++;
-      }
-      if (groupIndex < numGroups && newGroups[groupIndex].length < 6) {
-        newGroups[groupIndex].push(member);
-      }
-    });
-    
-    setGroups(newGroups);
-  };
+    if (groupIndex < numGroups && newGroups[groupIndex].length < 6) {
+      newGroups[groupIndex].push(member);
+    }
+  });
+  
+  await saveGroups(newGroups);
+};
 
-  const clearGroups = () => {
-    setGroups([[], [], [], []]);
-  };
+  const clearGroups = async () => {
+  await saveGroups([[], [], [], []]);
+};
 
   const addEvent = async () => {
     if (selectedAttendees.length === 0) return;
