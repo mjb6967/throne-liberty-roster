@@ -1425,8 +1425,8 @@ const handleLogin = () => {
           </div>
         )}
 
-
-    {activeTab === 'items' && (
+// 6. Add this tab content after your existing tab conditions (after activeTab === 'events'):
+{activeTab === 'items' && (
   <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
     {/* Left sidebar - Add item & Available members */}
     <div className="lg:col-span-1 space-y-6">
@@ -1575,7 +1575,10 @@ const handleLogin = () => {
     </div>
   </div>
 )}
+      </div>
+    </div>
   );
 };
 
 export default ThroneLibertyRoster;
+
