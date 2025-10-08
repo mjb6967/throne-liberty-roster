@@ -24,81 +24,30 @@ const ThroneLibertyRoster = () => {
   const eventTypes = ['Archboss', 'PVP Event', 'Siege', 'Guild War', 'Dungeon', 'Raid', 'Other'];
   
   const weaponCombos = [
-    'Crossbow + Dagger',
-    'Crossbow + Greatsword',
-    'Crossbow + Sword & Shield',
-    'Crossbow + Longbow',
-    'Crossbow + Staff',
-    'Crossbow + Wand & Tome',
-    'Greatsword + Wand & Tome',
-    'Greatsword + Dagger',
-    'Greatsword + Sword & Shield',
-    'Greatsword + Longbow',
-    'Greatsword + Staff',
-    'Sword & Shield + Dagger',
-    'Sword & Shield + Longbow',
-    'Sword & Shield + Staff',
-    'Sword & Shield + Wand & Tome',
-    'Longbow + Dagger',
-    'Longbow + Staff',
-    'Longbow + Wand & Tome',
-    'Staff + Dagger',
-    'Staff + Wand & Tome',
-    'Wand & Tome + Dagger',
-    'Spear + Crossbow',
-    'Spear + Dagger',
-    'Spear + Greatsword',
-    'Spear + Longbow',
-    'Spear + Staff',
-    'Spear + Sword & Shield',
-    'Spear + Wand & Tome',
-    'Orb + Crossbow',
-    'Orb + Dagger',
-    'Orb + Greatsword',
-    'Orb + Longbow',
-    'Orb + Staff',
-    'Orb + Spear',
-    'Orb + Sword & Shield',
-    'Orb + Wand & Tome'
+    'Crossbow + Dagger', 'Crossbow + Greatsword', 'Crossbow + Sword & Shield', 'Crossbow + Longbow',
+    'Crossbow + Staff', 'Crossbow + Wand & Tome', 'Greatsword + Wand & Tome', 'Greatsword + Dagger',
+    'Greatsword + Sword & Shield', 'Greatsword + Longbow', 'Greatsword + Staff', 'Sword & Shield + Dagger',
+    'Sword & Shield + Longbow', 'Sword & Shield + Staff', 'Sword & Shield + Wand & Tome', 'Longbow + Dagger',
+    'Longbow + Staff', 'Longbow + Wand & Tome', 'Staff + Dagger', 'Staff + Wand & Tome',
+    'Wand & Tome + Dagger', 'Spear + Crossbow', 'Spear + Dagger', 'Spear + Greatsword',
+    'Spear + Longbow', 'Spear + Staff', 'Spear + Sword & Shield', 'Spear + Wand & Tome',
+    'Orb + Crossbow', 'Orb + Dagger', 'Orb + Greatsword', 'Orb + Longbow',
+    'Orb + Staff', 'Orb + Spear', 'Orb + Sword & Shield', 'Orb + Wand & Tome'
   ];
 
   const weaponToClass = {
-    'Crossbow + Dagger': 'Scorpion',
-    'Crossbow + Greatsword': 'Outrider',
-    'Crossbow + Sword & Shield': 'Raider',
-    'Crossbow + Longbow': 'Scout',
-    'Crossbow + Staff': 'Battleweaver',
-    'Crossbow + Wand & Tome': 'Fury',
-    'Greatsword + Wand & Tome': 'Paladin',
-    'Greatsword + Dagger': 'Ravager',
-    'Greatsword + Sword & Shield': 'Crusader',
-    'Greatsword + Longbow': 'Ranger',
-    'Greatsword + Staff': 'Sentinel',
-    'Sword & Shield + Dagger': 'Berserker',
-    'Sword & Shield + Longbow': 'Warden',
-    'Sword & Shield + Staff': 'Disciple',
-    'Sword & Shield + Wand & Tome': 'Templar',
-    'Longbow + Dagger': 'Infiltrator',
-    'Longbow + Staff': 'Liberator',
-    'Longbow + Wand & Tome': 'Seeker',
-    'Staff + Dagger': 'Spellblade',
-    'Staff + Wand & Tome': 'Invocator',
-    'Wand & Tome + Dagger': 'Darkblighter',
-    'Spear + Crossbow': 'Cavalier',
-    'Spear + Dagger': 'Shadowdancer',
-    'Spear + Greatsword': 'Gladiator',
-    'Spear + Longbow': 'Impaler',
-    'Spear + Staff': 'Eradicator',
-    'Spear + Sword & Shield': 'Steelheart',
-    'Spear + Wand & Tome': 'Voidlance',
-    'Orb + Crossbow': 'Crucifix',
-    'Orb + Dagger': 'Lunarch',
-    'Orb + Greatsword': 'Justicar',
-    'Orb + Longbow': 'Scryer',
-    'Orb + Staff': 'Enigma',
-    'Orb + Spear': 'Polaris',
-    'Orb + Sword & Shield': 'Guardian',
-    'Orb + Wand & Tome': 'Oracle'
+    'Crossbow + Dagger': 'Scorpion', 'Crossbow + Greatsword': 'Outrider', 'Crossbow + Sword & Shield': 'Raider',
+    'Crossbow + Longbow': 'Scout', 'Crossbow + Staff': 'Battleweaver', 'Crossbow + Wand & Tome': 'Fury',
+    'Greatsword + Wand & Tome': 'Paladin', 'Greatsword + Dagger': 'Ravager', 'Greatsword + Sword & Shield': 'Crusader',
+    'Greatsword + Longbow': 'Ranger', 'Greatsword + Staff': 'Sentinel', 'Sword & Shield + Dagger': 'Berserker',
+    'Sword & Shield + Longbow': 'Warden', 'Sword & Shield + Staff': 'Disciple', 'Sword & Shield + Wand & Tome': 'Templar',
+    'Longbow + Dagger': 'Infiltrator', 'Longbow + Staff': 'Liberator', 'Longbow + Wand & Tome': 'Seeker',
+    'Staff + Dagger': 'Spellblade', 'Staff + Wand & Tome': 'Invocator', 'Wand & Tome + Dagger': 'Darkblighter',
+    'Spear + Crossbow': 'Cavalier', 'Spear + Dagger': 'Shadowdancer', 'Spear + Greatsword': 'Gladiator',
+    'Spear + Longbow': 'Impaler', 'Spear + Staff': 'Eradicator', 'Spear + Sword & Shield': 'Steelheart',
+    'Spear + Wand & Tome': 'Voidlance', 'Orb + Crossbow': 'Crucifix', 'Orb + Dagger': 'Lunarch',
+    'Orb + Greatsword': 'Justicar', 'Orb + Longbow': 'Scryer', 'Orb + Staff': 'Enigma',
+    'Orb + Spear': 'Polaris', 'Orb + Sword & Shield': 'Guardian', 'Orb + Wand & Tome': 'Oracle'
   };
 
   const classNames = [
@@ -169,133 +118,134 @@ const ThroneLibertyRoster = () => {
     );
   }
 
- const loadData = async () => {
-  setLoading(true);
-  try {
-    // Load members
-    const { data: membersData, error: membersError } = await supabase
-      .from('members')
-      .select('*')
-      .order('name');
-    
-    if (membersError) throw membersError;
-    
-    if (membersData) {
-      const loadedMembers = membersData.map(m => ({
-        id: m.id,
-        name: m.name,
-        role: m.role,
-        onDiscord: m.on_discord,
-        onProbation: m.on_probation,
-        questlog: m.questlog || '',
-        weaponCombo: m.weapon_combo || '',
-        className: m.class_name || ''
-      }));
-      setMembers(loadedMembers);
-    }
-
-    // Load events with attendees
-    const { data: eventsData, error: eventsError } = await supabase
-      .from('events')
-      .select(`
-        *,
-        event_attendees(member_id)
-      `)
-      .order('date', { ascending: false });
-    
-    if (eventsError) throw eventsError;
-    
-    if (eventsData) {
-      setEvents(eventsData.map(e => ({
-        id: e.id,
-        type: e.type,
-        date: e.date,
-        attendees: e.event_attendees.map(a => a.member_id),
-        attendeeCount: e.attendee_count
-      })));
-    }
-
-    // NEW: Load groups AFTER members are loaded
-    await loadGroupsFromDB(membersData);
-
-  } catch (error) {
-    console.error('Error loading data:', error);
-    alert('Error loading data. Please refresh the page.');
-  } finally {
-    setLoading(false);
-  }
-};
-
+  // Load groups from database
   const loadGroupsFromDB = async (membersList) => {
-  try {
-    const { data, error } = await supabase
-      .from('groups')
-      .select('*')
-      .order('group_index')
-      .order('position');
-    
-    if (error) throw error;
-    
-    if (data && data.length > 0) {
-      const maxGroupIndex = Math.max(...data.map(g => g.group_index), -1);
-      const groupsArray = Array(maxGroupIndex + 1).fill(null).map(() => []);
+    try {
+      const { data, error } = await supabase
+        .from('groups')
+        .select('*')
+        .order('group_index')
+        .order('position');
       
-      data.forEach(groupMember => {
-        const member = membersList.find(m => m.id === groupMember.member_id);
-        if (member) {
-          const memberObj = {
-            id: member.id,
-            name: member.name,
-            role: member.role,
-            onDiscord: member.on_discord,
-            onProbation: member.on_probation,
-            questlog: member.questlog || '',
-            weaponCombo: member.weapon_combo || '',
-            className: member.class_name || ''
-          };
-          groupsArray[groupMember.group_index].push(memberObj);
-        }
-      });
+      if (error) throw error;
       
-      setGroups(groupsArray);
+      if (data && data.length > 0) {
+        const maxGroupIndex = Math.max(...data.map(g => g.group_index), -1);
+        const groupsArray = Array(maxGroupIndex + 1).fill(null).map(() => []);
+        
+        data.forEach(groupMember => {
+          const member = membersList.find(m => m.id === groupMember.member_id);
+          if (member) {
+            const memberObj = {
+              id: member.id,
+              name: member.name,
+              role: member.role,
+              onDiscord: member.on_discord,
+              onProbation: member.on_probation,
+              questlog: member.questlog || '',
+              weaponCombo: member.weapon_combo || '',
+              className: member.class_name || ''
+            };
+            groupsArray[groupMember.group_index].push(memberObj);
+          }
+        });
+        
+        setGroups(groupsArray);
+      }
+    } catch (error) {
+      console.error('Error loading groups:', error);
     }
-  } catch (error) {
-    console.error('Error loading groups:', error);
-    // Keep default 4 empty groups if load fails
-  }
-};
-// 3. ADD this new function after loadGroupsFromDB
-const saveGroups = async (newGroups) => {
-  setSaving(true);
-  try {
-    // Delete existing groups
-    await supabase.from('groups').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    
-    // Insert new groups
-    const groupRecords = [];
-    newGroups.forEach((group, groupIndex) => {
-      group.forEach((member, position) => {
-        groupRecords.push({
-          group_index: groupIndex,
-          member_id: member.id,
-          position: position
+  };
+
+  // Load all data from Supabase
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // Load members
+      const { data: membersData, error: membersError } = await supabase
+        .from('members')
+        .select('*')
+        .order('name');
+      
+      if (membersError) throw membersError;
+      
+      if (membersData) {
+        const loadedMembers = membersData.map(m => ({
+          id: m.id,
+          name: m.name,
+          role: m.role,
+          onDiscord: m.on_discord,
+          onProbation: m.on_probation,
+          questlog: m.questlog || '',
+          weaponCombo: m.weapon_combo || '',
+          className: m.class_name || ''
+        }));
+        setMembers(loadedMembers);
+        
+        // Load groups after members are loaded
+        await loadGroupsFromDB(membersData);
+      }
+
+      // Load events with attendees
+      const { data: eventsData, error: eventsError } = await supabase
+        .from('events')
+        .select(`
+          *,
+          event_attendees(member_id)
+        `)
+        .order('date', { ascending: false });
+      
+      if (eventsError) throw eventsError;
+      
+      if (eventsData) {
+        setEvents(eventsData.map(e => ({
+          id: e.id,
+          type: e.type,
+          date: e.date,
+          attendees: e.event_attendees.map(a => a.member_id),
+          attendeeCount: e.attendee_count
+        })));
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      alert('Error loading data. Please refresh the page.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Save groups to database
+  const saveGroups = async (newGroups) => {
+    setSaving(true);
+    try {
+      // Delete existing groups
+      await supabase.from('groups').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      // Insert new groups
+      const groupRecords = [];
+      newGroups.forEach((group, groupIndex) => {
+        group.forEach((member, position) => {
+          groupRecords.push({
+            group_index: groupIndex,
+            member_id: member.id,
+            position: position
+          });
         });
       });
-    });
-    
-    if (groupRecords.length > 0) {
-      const { error } = await supabase.from('groups').insert(groupRecords);
-      if (error) throw error;
+      
+      if (groupRecords.length > 0) {
+        const { error } = await supabase.from('groups').insert(groupRecords);
+        if (error) throw error;
+      }
+      
+      setGroups(newGroups);
+    } catch (error) {
+      console.error('Error saving groups:', error);
+      alert('Error saving groups. Please try again.');
+    } finally {
+      setSaving(false);
     }
-    
-    setGroups(newGroups);
-  } catch (error) {
-    console.error('Error saving groups:', error);
-    alert('Error saving groups. Please try again.');
-  } finally {
-    setSaving(false);
-  }
-};
+  };
 
   const saveMember = async (member) => {
     setSaving(true);
@@ -322,18 +272,15 @@ const saveGroups = async (newGroups) => {
     }
   };
 
-// 4. REPLACE addGroup function (around line 233)
-const addGroup = async () => {
-  await saveGroups([...groups, []]);
-};
+  const addGroup = async () => {
+    await saveGroups([...groups, []]);
+  };
 
-// 5. REPLACE removeGroup function (around line 237)
-const removeGroup = async (groupIndex) => {
-  if (groups.length <= 1) return;
-  const newGroups = groups.filter((_, index) => index !== groupIndex);
-  await saveGroups(newGroups);
-};
-
+  const removeGroup = async (groupIndex) => {
+    if (groups.length <= 1) return;
+    const newGroups = groups.filter((_, index) => index !== groupIndex);
+    await saveGroups(newGroups);
+  };
 
   const addMember = async () => {
     if (newMemberName.trim()) {
@@ -447,59 +394,56 @@ const removeGroup = async (groupIndex) => {
     await saveMember(updatedMember);
   };
 
-// 6. REPLACE assignToGroup function (around line 362)
-const assignToGroup = async (member, groupIndex) => {
-  if (groups[groupIndex].length >= 6 || member.onProbation) return;
-  
-  const newGroups = groups.map((g, i) => 
-    i === groupIndex ? [...g, member] : g.filter(m => m.id !== member.id)
-  );
-  await saveGroups(newGroups);
-};
+  const assignToGroup = async (member, groupIndex) => {
+    if (groups[groupIndex].length >= 6 || member.onProbation) return;
+    
+    const newGroups = groups.map((g, i) => 
+      i === groupIndex ? [...g, member] : g.filter(m => m.id !== member.id)
+    );
+    await saveGroups(newGroups);
+  };
 
-// 7. REPLACE removeFromGroup function (around line 370)
-const removeFromGroup = async (memberId, groupIndex) => {
-  const newGroups = [...groups];
-  newGroups[groupIndex] = newGroups[groupIndex].filter(m => m.id !== memberId);
-  await saveGroups(newGroups);
-};
+  const removeFromGroup = async (memberId, groupIndex) => {
+    const newGroups = [...groups];
+    newGroups[groupIndex] = newGroups[groupIndex].filter(m => m.id !== memberId);
+    await saveGroups(newGroups);
+  };
 
-// 8. REPLACE autoAssign function (around line 376)
-const autoAssign = async () => {
-  const activeMembers = members.filter(m => !m.onProbation);
-  const unassigned = activeMembers.filter(m => 
-    !groups.some(g => g.some(gm => gm.id === m.id))
-  );
-  
-  const tanks = unassigned.filter(m => m.role === 'TANK');
-  const healers = unassigned.filter(m => m.role === 'HEALER');
-  const dps = unassigned.filter(m => m.role === 'DPS');
-  const unknown = unassigned.filter(m => m.role === 'UNKNOWN');
-  
-  const numGroups = groups.length;
-  const newGroups = Array(numGroups).fill(null).map(() => []);
-  
-  for (let i = 0; i < numGroups; i++) {
-    if (tanks[i]) newGroups[i].push(tanks[i]);
-    if (healers[i]) newGroups[i].push(healers[i]);
-  }
-  
-  let groupIndex = 0;
-  [...dps, ...unknown].forEach(member => {
-    while (newGroups[groupIndex].length >= 6 && groupIndex < numGroups - 1) {
-      groupIndex++;
+  const autoAssign = async () => {
+    const activeMembers = members.filter(m => !m.onProbation);
+    const unassigned = activeMembers.filter(m => 
+      !groups.some(g => g.some(gm => gm.id === m.id))
+    );
+    
+    const tanks = unassigned.filter(m => m.role === 'TANK');
+    const healers = unassigned.filter(m => m.role === 'HEALER');
+    const dps = unassigned.filter(m => m.role === 'DPS');
+    const unknown = unassigned.filter(m => m.role === 'UNKNOWN');
+    
+    const numGroups = groups.length;
+    const newGroups = Array(numGroups).fill(null).map(() => []);
+    
+    for (let i = 0; i < numGroups; i++) {
+      if (tanks[i]) newGroups[i].push(tanks[i]);
+      if (healers[i]) newGroups[i].push(healers[i]);
     }
-    if (groupIndex < numGroups && newGroups[groupIndex].length < 6) {
-      newGroups[groupIndex].push(member);
-    }
-  });
-  
-  await saveGroups(newGroups);
-};
+    
+    let groupIndex = 0;
+    [...dps, ...unknown].forEach(member => {
+      while (newGroups[groupIndex].length >= 6 && groupIndex < numGroups - 1) {
+        groupIndex++;
+      }
+      if (groupIndex < numGroups && newGroups[groupIndex].length < 6) {
+        newGroups[groupIndex].push(member);
+      }
+    });
+    
+    await saveGroups(newGroups);
+  };
 
   const clearGroups = async () => {
-  await saveGroups([[], [], [], []]);
-};
+    await saveGroups([[], [], [], []]);
+  };
 
   const addEvent = async () => {
     if (selectedAttendees.length === 0) return;
@@ -691,7 +635,6 @@ const autoAssign = async () => {
           </button>
         </div>
 
-       
         <div className="flex gap-2 mb-6 flex-wrap">
           <button
             onClick={() => setActiveTab('groups')}
@@ -855,9 +798,8 @@ const autoAssign = async () => {
 
                       {group.length < 6 && (
                         <select
-                          onChange={(
-e) => {
-                           const member = unassignedMembers.find(m => m.id === e.target.value);
+                          onChange={(e) => {
+                            const member = unassignedMembers.find(m => m.id === e.target.value);
                             if (member) {
                               assignToGroup(member, groupIndex);
                               e.target.value = '';
