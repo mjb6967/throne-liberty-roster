@@ -1,4 +1,3 @@
-javascript
 export default {
   content: [
     "./index.html",
