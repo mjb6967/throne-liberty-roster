@@ -1,9 +1,552 @@
-import React, { useState, useEffect } from 'react';
-import { Users, UserPlus, Trash2, RefreshCw, AlertCircle, List, Grid, Calendar, TrendingUp, Download, Save, Loader, LogOut, Package, Edit2, Check, X } from 'lucide-react';
+)}
+
+        {activeTab === 'roster' && (
+          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+            <div className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="bg-slate-700 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-white">{stats.total}</div>
+                <div className="text-sm text-slate-400">Total Active</div>
+              </div>
+              <div className="bg-green-900/30 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-green-400">{stats.tanks}</div>
+                <div className="text-sm text-slate-400">Tanks</div>
+              </div>
+              <div className="bg-yellow-900/30 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-yellow-400">{stats.healers}</div>
+                <div className="text-sm text-slate-400">Healers</div>
+              </div>
+              <div className="bg-red-900/30 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-red-400">{stats.dps}</div>
+                <div className="text-sm text-slate-400">DPS</div>
+              </div>
+              <div className="bg-blue-900/30 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-blue-400">{stats.onDiscord}</div>
+                <div className="text-sm text-slate-400">On Discord</div>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="text-lg font-bold text-white mb-3">Class Distribution</h3>
+              <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
+                {Object.entries(classStats).map(([className, count]) => (
+                  count > 0 && (
+                    <div key={className} className="bg-slate-700 p-2 rounded text-center">
+                      <div className="text-lg font-bold text-purple-400">{count}</div>
+                      <div className="text-xs text-slate-400">{className}</div>
+                    </div>
+                  )
+                ))}
+              </div>
+            </div>
+
+            <h2 className="text-xl font-bold text-white mb-4">Active Roster</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-700">
+                    <th className="text-left text-slate-400 py-3 px-4">Name</th>
+                    <th className="text-left text-slate-400 py-3 px-4">Role</th>
+                    <th className="text-left text-slate-400 py-3 px-4">Weapon Combo</th>
+                    <th className="text-left text-slate-400 py-3 px-4">Class Name</th>
+                    <th className="text-left text-slate-400 py-3 px-4">Questlog</th>
+                    <th className="text-center text-slate-400 py-3 px-4">Events</th>
+                    <th className="text-center text-slate-400 py-3 px-4">Discord</th>
+                    <th className="text-center text-slate-400 py-3 px-4">Probation</th>
+                    {isEditMode && <th className="text-center text-slate-400 py-3 px-4">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeMembers.map(member => {
+                    const memberStats = getMemberStats(member.id);
+                    return (
+                      <tr key={member.id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <span className={`${getRoleColor(member.role)} w-3 h-3 rounded-full`}></span>
+                            <span className="text-white">{member.name}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <select
+                            value={member.role}
+                            onChange={(e) => updateMemberRole(member.id, e.target.value)}
+                            disabled={!isEditMode}
+                            className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+                          >
+                            <option value="TANK">Tank</option>
+                            <option value="HEALER">Healer</option>
+                            <option value="DPS">DPS</option>
+                            <option value="UNKNOWN">Unknown</option>
+                          </select>
+                        </td>
+                        <td className="py-3 px-4">
+                          <select
+                            value={member.weaponCombo}
+                            onChange={(e) => updateWeaponCombo(member.id, e.target.value)}
+                            disabled={!isEditMode}
+                            className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+                          >
+                            <option value="">Select...</option>
+                            {weaponCombos.map(combo => (
+                              <option key={combo} value={combo}>{combo}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="py-3 px-4">
+                          <input
+                            type="text"
+                            value={member.className}
+                            disabled
+                            className="w-full px-2 py-1 bg-slate-600 text-slate-300 text-sm rounded cursor-not-allowed"
+                          />
+                        </td>
+                        <td className="py-3 px-4">
+                          <input
+                            type="text"
+                            placeholder="Build link..."
+                            value={member.questlog}
+                            onChange={(e) => updateQuestlog(member.id, e.target.value)}
+                            disabled={!isEditMode}
+                            className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+                          />
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="text-white font-semibold">{memberStats.total}</span>
+                          <div className="text-xs text-slate-400">
+                            AB:{memberStats.archboss} PVP:{memberStats.pvp} S:{memberStats.siege}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={member.onDiscord}
+                            onChange={() => toggleDiscord(member.id)}
+                            disabled={!isEditMode}
+                            className="w-5 h-5 cursor-pointer disabled:cursor-not-allowed"
+                          />
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={member.onProbation}
+                            onChange={() => toggleProbation(member.id)}
+                            disabled={!isEditMode}
+                            className="w-5 h-5 cursor-pointer disabled:cursor-not-allowed"
+                          />
+                        </td>
+                        {isEditMode && (
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              onClick={() => removeMember(member.id)}
+                              className="text-red-400 hover:text-red-300"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {probationMembers.length > 0 && (
+              <>
+                <h2 className="text-xl font-bold text-orange-400 mb-4 mt-8">On Probation ({probationMembers.length})</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-slate-700">
+                        <th className="text-left text-slate-400 py-3 px-4">Name</th>
+                        <th className="text-left text-slate-400 py-3 px-4">Role</th>
+                        <th className="text-left text-slate-400 py-3 px-4">Weapon Combo</th>
+                        <th className="text-left text-slate-400 py-3 px-4">Class Name</th>
+                        <th className="text-left text-slate-400 py-3 px-4">Questlog</th>
+                        <th className="text-center text-slate-400 py-3 px-4">Discord</th>
+                        <th className="text-center text-slate-400 py-3 px-4">Probation</th>
+                        {isEditMode && <th className="text-center text-slate-400 py-3 px-4">Actions</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {probationMembers.map(member => (
+                        <tr key={member.id} className="border-b border-slate-700/50 hover:bg-slate-700/30 bg-orange-900/10">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <span className={`${getRoleColor(member.role)} w-3 h-3 rounded-full`}></span>
+                              <span className="text-white">{member.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <select
+                              value={member.role}
+                              onChange={(e) => updateMemberRole(member.id, e.target.value)}
+                              disabled={!isEditMode}
+                              className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+                            >
+                              <option value="TANK">Tank</option>
+                              <option value="HEALER">Healer</option>
+                              <option value="DPS">DPS</option>
+                              <option value="UNKNOWN">Unknown</option>
+                            </select>
+                          </td>
+                          <td className="py-3 px-4">
+                            <select
+                              value={member.weaponCombo}
+                              onChange={(e) => updateWeaponCombo(member.id, e.target.value)}
+                              disabled={!isEditMode}
+                              className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+                            >
+                              <option value="">Select...</option>
+                              {weaponCombos.map(combo => (
+                                <option key={combo} value={combo}>{combo}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="py-3 px-4">
+                            <input
+                              type="text"
+                              value={member.className}
+                              disabled
+                              className="w-full px-2 py-1 bg-slate-600 text-slate-300 text-sm rounded cursor-not-allowed"
+                            />
+                          </td>
+                          <td className="py-3 px-4">
+                            <input
+                              type="text"
+                              placeholder="Build link..."
+                              value={member.questlog}
+                              onChange={(e) => updateQuestlog(member.id, e.target.value)}
+                              disabled={!isEditMode}
+                              className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+                            />
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <input
+                              type="checkbox"
+                              checked={member.onDiscord}
+                              onChange={() => toggleDiscord(member.id)}
+                              disabled={!isEditMode}
+                              className="w-5 h-5 cursor-pointer disabled:cursor-not-allowed"
+                            />
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <input
+                              type="checkbox"
+                              checked={member.onProbation}
+                              onChange={() => toggleProbation(member.id)}
+                              disabled={!isEditMode}
+                              className="w-5 h-5 cursor-pointer disabled:cursor-not-allowed"
+                            />
+                          </td>
+                          {isEditMode && (
+                            <td className="py-3 px-4 text-center">
+                              <button
+                                onClick={() => removeMember(member.id)}
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'events' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1 space-y-6">
+              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+                <h2 className="text-xl font-bold text-white mb-4">Log New Event</h2>
+                
+                <select
+                  value={newEventType}
+                  onChange={(e) => setNewEventType(e.target.value)}
+                  disabled={!isEditMode}
+                  className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+                >
+                  {eventTypes.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+
+                <input
+                  type="date"
+                  value={newEventDate}
+                  onChange={(e) => setNewEventDate(e.target.value)}
+                  disabled={!isEditMode}
+                  className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+                />
+
+                <div className="mb-3">
+                  <div className="text-sm text-slate-400 mb-2">
+                    Selected: {selectedAttendees.length} members
+                  </div>
+                  <div className="max-h-48 overflow-y-auto bg-slate-700 rounded p-3 space-y-2">
+                    {activeMembers.map(member => (
+                      <label key={member.id} className={`flex items-center gap-2 p-1 rounded ${isEditMode ? 'cursor-pointer hover:bg-slate-600' : 'cursor-default'}`}>
+                        <input
+                          type="checkbox"
+                          checked={selectedAttendees.includes(member.id)}
+                          onChange={() => toggleAttendee(member.id)}
+                          disabled={!isEditMode}
+                          className="w-4 h-4 disabled:cursor-not-allowed"
+                        />
+                        <span className={`${getRoleColor(member.role)} w-2 h-2 rounded-full`}></span>
+                        <span className="text-white text-sm">{member.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  onClick={addEvent}
+                  disabled={!isEditMode || selectedAttendees.length === 0}
+                  className={`w-full ${isEditMode && selectedAttendees.length > 0 ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-600 cursor-not-allowed'} text-white py-2 rounded font-semibold transition`}
+                >
+                  Log Event
+                </button>
+              </div>
+
+              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  Top Participants
+                </h2>
+                <div className="space-y-2">
+                  {topParticipants.map((member, index) => (
+                    <div key={member.id} className="flex items-center justify-between bg-slate-700 p-3 rounded">
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400 font-bold">#{index + 1}</span>
+                        <span className={`${getRoleColor(member.role)} w-2 h-2 rounded-full`}></span>
+                        <span className="text-white">{member.name}</span>
+                      </div>
+                      <span className="text-blue-400 font-bold">{member.eventCount}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-white">Event Statistics</h2>
+                  <button
+                    onClick={exportEventData}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-semibold transition"
+                  >
+                    <Download className="w-4 h-4" />
+                    Export CSV
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-purple-900/30 p-4 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-purple-400">{events.length}</div>
+                    <div className="text-sm text-slate-400">Total Events</div>
+                  </div>
+                  <div className="bg-emerald-900/30 p-4 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-emerald-400">{eventTypeStats['Archboss']}</div>
+                    <div className="text-sm text-slate-400">Archboss</div>
+                  </div>
+                  <div className="bg-rose-900/30 p-4 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-rose-400">{eventTypeStats['PVP Event']}</div>
+                    <div className="text-sm text-slate-400">PVP Events</div>
+                  </div>
+                  <div className="bg-amber-900/30 p-4 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-amber-400">{eventTypeStats['Siege']}</div>
+                    <div className="text-sm text-slate-400">Sieges</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-white">Event History</h2>
+                  <select
+                    value={eventFilter}
+                    onChange={(e) => setEventFilter(e.target.value)}
+                    className="px-3 py-2 bg-slate-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All Events</option>
+                    {eventTypes.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {filteredEvents.length === 0 ? (
+                    <div className="text-center text-slate-400 py-8">
+                      No events logged yet. Start tracking your guild activities!
+                    </div>
+                  ) : (
+                    filteredEvents.map(event => (
+                      <div key={event.id} className="bg-slate-700 p-4 rounded-lg">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h3 className="text-white font-semibold">{event.type}</h3>
+                            <p className="text-sm text-slate-400">{event.date}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-blue-400 font-bold">{event.attendeeCount} attendees</span>
+                            {isEditMode && (
+                              <button
+                                onClick={() => deleteEvent(event.id)}
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {event.attendees.map(attendeeId => {
+                            const attendee = members.find(m => m.id === attendeeId);
+                            return attendee ? (
+                              <span key={attendeeId} className="px-2 py-1 bg-slate-600 text-white text-xs rounded">
+                                {attendee.name}
+                              </span>
+                            ) : null;
+                          })}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'loot' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1 bg-slate-800 rounded-lg p-6 border border-slate-700">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Add Loot Item
+              </h2>
+              
+              <input
+                type="text"
+                placeholder="Item name"
+                value={newLootItemName}
+                onChange={(e) => setNewLootItemName(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && isEditMode && addLootItem()}
+                disabled={!isEditMode}
+                className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+              />
+              
+              <select
+                value={newLootItemType}
+                onChange={(e) => setNewLootItemType(e.target.value)}
+                disabled={!isEditMode}
+                className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
+              >
+                {lootTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+              
+              <button
+                onClick={addLootItem}
+                disabled={!isEditMode}
+                className={`w-full ${isEditMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-600 cursor-not-allowed'} text-white py-2 rounded font-semibold transition`}
+              >
+                Add Item
+              </button>
+
+              <div className="mt-6">
+                <h3 className="text-white font-semibold mb-2">Total Items: {lootItems.length}</h3>
+                <div className="text-sm text-slate-400">
+                  Track which members need specific boss gear and coordinate loot distribution
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-2">
+              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+                <h2 className="text-xl font-bold text-white mb-4">Loot Items</h2>
+                
+                {lootItems.length === 0 ? (
+                  <div className="text-center text-slate-400 py-8">
+                    No loot items added yet. Start tracking boss gear!
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                    {lootItems.map(item => (
+                      <div key={item.id} className="bg-slate-700 rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h3 className="text-white font-semibold text-lg">{item.name}</h3>
+                            <span className="text-xs text-slate-400 bg-slate-600 px-2 py-1 rounded mt-1 inline-block">
+                              {item.type}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-blue-400 font-bold">{item.seekers.length} seeking</span>
+                            {isEditMode && (
+                              <button
+                                onClick={() => deleteLootItem(item.id)}
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="text-sm text-slate-400 mb-2">Members seeking this item:</div>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {activeMembers.map(member => {
+                              const isSeeking = item.seekers.includes(member.id);
+                              return (
+                                <label
+                                  key={member.id}
+                                  className={`flex items-center gap-2 p-2 rounded transition ${
+                                    isSeeking ? 'bg-blue-900/50 border border-blue-700' : 'bg-slate-600'
+                                  } ${isEditMode ? 'cursor-pointer hover:bg-slate-500' : 'cursor-default'}`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isSeeking}
+                                    onChange={() => toggleLootSeeker(item.id, member.id)}
+                                    disabled={!isEditMode}
+                                    className="w-4 h-4 disabled:cursor-not-allowed"
+                                  />
+                                  <span className={`${getRoleColor(member.role)} w-2 h-2 rounded-full`}></span>
+                                  <span className="text-white text-sm">{member.name}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ThroneLibertyRoster;import React, { useState, useEffect } from 'react';
+import { Users, UserPlus, Trash2, RefreshCw, AlertCircle, List, Grid, Calendar, TrendingUp, Download, Loader, LogOut, Package, Edit2, Check, X } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 const ThroneLibertyRoster = () => {
-  // Authentication state
   const [authLevel, setAuthLevel] = useState('none');
   const [password, setPassword] = useState('');
   
@@ -69,7 +612,6 @@ const ThroneLibertyRoster = () => {
 
   const isEditMode = authLevel === 'edit';
 
-  // Load groups from database
   const loadGroupsFromDB = async (membersList) => {
     try {
       const { data: groupsData, error: groupsError } = await supabase
@@ -121,11 +663,9 @@ const ThroneLibertyRoster = () => {
     }
   };
 
-  // Load all data from Supabase
   const loadData = async () => {
     setLoading(true);
     try {
-      // Load members
       const { data: membersData, error: membersError } = await supabase
         .from('members')
         .select('*')
@@ -146,11 +686,9 @@ const ThroneLibertyRoster = () => {
         }));
         setMembers(loadedMembers);
         
-        // Load groups after members are loaded
         await loadGroupsFromDB(membersData);
       }
 
-      // Load events with attendees
       const { data: eventsData, error: eventsError } = await supabase
         .from('events')
         .select(`
@@ -171,7 +709,6 @@ const ThroneLibertyRoster = () => {
         })));
       }
 
-      // Load loot items
       const { data: lootData, error: lootError } = await supabase
         .from('loot_items')
         .select(`
@@ -221,14 +758,11 @@ const ThroneLibertyRoster = () => {
     setPassword('');
   };
   
-  // Save groups to database
   const saveGroups = async (newGroups) => {
     setSaving(true);
     try {
-      // Delete existing group members
       await supabase.from('group_members').delete().neq('id', 0);
       
-      // Insert new group members
       const groupRecords = [];
       newGroups.forEach((group) => {
         group.members.forEach((member, position) => {
@@ -819,291 +1353,6 @@ const ThroneLibertyRoster = () => {
           </div>
         )}
 
-        {activeTab === 'events' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 space-y-6">
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-                <h2 className="text-xl font-bold text-white mb-4">Log New Event</h2>
-                
-                <select
-                  value={newEventType}
-                  onChange={(e) => setNewEventType(e.target.value)}
-                  disabled={!isEditMode}
-                  className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
-                >
-                  {eventTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-
-                <input
-                  type="date"
-                  value={newEventDate}
-                  onChange={(e) => setNewEventDate(e.target.value)}
-                  disabled={!isEditMode}
-                  className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
-                />
-
-                <div className="mb-3">
-                  <div className="text-sm text-slate-400 mb-2">
-                    Selected: {selectedAttendees.length} members
-                  </div>
-                  <div className="max-h-48 overflow-y-auto bg-slate-700 rounded p-3 space-y-2">
-                    {activeMembers.map(member => (
-                      <label key={member.id} className={`flex items-center gap-2 p-1 rounded ${isEditMode ? 'cursor-pointer hover:bg-slate-600' : 'cursor-default'}`}>
-                        <input
-                          type="checkbox"
-                          checked={selectedAttendees.includes(member.id)}
-                          onChange={() => toggleAttendee(member.id)}
-                          disabled={!isEditMode}
-                          className="w-4 h-4 disabled:cursor-not-allowed"
-                        />
-                        <span className={`${getRoleColor(member.role)} w-2 h-2 rounded-full`}></span>
-                        <span className="text-white text-sm">{member.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  onClick={addEvent}
-                  disabled={!isEditMode || selectedAttendees.length === 0}
-                  className={`w-full ${isEditMode && selectedAttendees.length > 0 ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-600 cursor-not-allowed'} text-white py-2 rounded font-semibold transition`}
-                >
-                  Log Event
-                </button>
-              </div>
-
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  Top Participants
-                </h2>
-                <div className="space-y-2">
-                  {topParticipants.map((member, index) => (
-                    <div key={member.id} className="flex items-center justify-between bg-slate-700 p-3 rounded">
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-400 font-bold">#{index + 1}</span>
-                        <span className={`${getRoleColor(member.role)} w-2 h-2 rounded-full`}></span>
-                        <span className="text-white">{member.name}</span>
-                      </div>
-                      <span className="text-blue-400 font-bold">{member.eventCount}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-white">Event Statistics</h2>
-                  <button
-                    onClick={exportEventData}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-semibold transition"
-                  >
-                    <Download className="w-4 h-4" />
-                    Export CSV
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-purple-900/30 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-purple-400">{events.length}</div>
-                    <div className="text-sm text-slate-400">Total Events</div>
-                  </div>
-                  <div className="bg-emerald-900/30 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-emerald-400">{eventTypeStats['Archboss']}</div>
-                    <div className="text-sm text-slate-400">Archboss</div>
-                  </div>
-                  <div className="bg-rose-900/30 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-rose-400">{eventTypeStats['PVP Event']}</div>
-                    <div className="text-sm text-slate-400">PVP Events</div>
-                  </div>
-                  <div className="bg-amber-900/30 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-amber-400">{eventTypeStats['Siege']}</div>
-                    <div className="text-sm text-slate-400">Sieges</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-white">Event History</h2>
-                  <select
-                    value={eventFilter}
-                    onChange={(e) => setEventFilter(e.target.value)}
-                    className="px-3 py-2 bg-slate-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">All Events</option>
-                    {eventTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {filteredEvents.length === 0 ? (
-                    <div className="text-center text-slate-400 py-8">
-                      No events logged yet. Start tracking your guild activities!
-                    </div>
-                  ) : (
-                    filteredEvents.map(event => (
-                      <div key={event.id} className="bg-slate-700 p-4 rounded-lg">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h3 className="text-white font-semibold">{event.type}</h3>
-                            <p className="text-sm text-slate-400">{event.date}</p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-blue-400 font-bold">{event.attendeeCount} attendees</span>
-                            {isEditMode && (
-                              <button
-                                onClick={() => deleteEvent(event.id)}
-                                className="text-red-400 hover:text-red-300"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {event.attendees.map(attendeeId => {
-                            const attendee = members.find(m => m.id === attendeeId);
-                            return attendee ? (
-                              <span key={attendeeId} className="px-2 py-1 bg-slate-600 text-white text-xs rounded">
-                                {attendee.name}
-                              </span>
-                            ) : null;
-                          })}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'loot' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 bg-slate-800 rounded-lg p-6 border border-slate-700">
-              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <Package className="w-5 h-5" />
-                Add Loot Item
-              </h2>
-              
-              <input
-                type="text"
-                placeholder="Item name"
-                value={newLootItemName}
-                onChange={(e) => setNewLootItemName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && isEditMode && addLootItem()}
-                disabled={!isEditMode}
-                className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
-              />
-              
-              <select
-                value={newLootItemType}
-                onChange={(e) => setNewLootItemType(e.target.value)}
-                disabled={!isEditMode}
-                className="w-full px-4 py-2 bg-slate-700 text-white rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
-              >
-                {lootTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
-              
-              <button
-                onClick={addLootItem}
-                disabled={!isEditMode}
-                className={`w-full ${isEditMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-600 cursor-not-allowed'} text-white py-2 rounded font-semibold transition`}
-              >
-                Add Item
-              </button>
-
-              <div className="mt-6">
-                <h3 className="text-white font-semibold mb-2">Total Items: {lootItems.length}</h3>
-                <div className="text-sm text-slate-400">
-                  Track which members need specific boss gear and coordinate loot distribution
-                </div>
-              </div>
-            </div>
-
-            <div className="lg:col-span-2">
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-                <h2 className="text-xl font-bold text-white mb-4">Loot Items</h2>
-                
-                {lootItems.length === 0 ? (
-                  <div className="text-center text-slate-400 py-8">
-                    No loot items added yet. Start tracking boss gear!
-                  </div>
-                ) : (
-                  <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                    {lootItems.map(item => (
-                      <div key={item.id} className="bg-slate-700 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <h3 className="text-white font-semibold text-lg">{item.name}</h3>
-                            <span className="text-xs text-slate-400 bg-slate-600 px-2 py-1 rounded mt-1 inline-block">
-                              {item.type}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-blue-400 font-bold">{item.seekers.length} seeking</span>
-                            {isEditMode && (
-                              <button
-                                onClick={() => deleteLootItem(item.id)}
-                                className="text-red-400 hover:text-red-300"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="text-sm text-slate-400 mb-2">Members seeking this item:</div>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                            {activeMembers.map(member => {
-                              const isSeeking = item.seekers.includes(member.id);
-                              return (
-                                <label
-                                  key={member.id}
-                                  className={`flex items-center gap-2 p-2 rounded transition ${
-                                    isSeeking ? 'bg-blue-900/50 border border-blue-700' : 'bg-slate-600'
-                                  } ${isEditMode ? 'cursor-pointer hover:bg-slate-500' : 'cursor-default'}`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={isSeeking}
-                                    onChange={() => toggleLootSeeker(item.id, member.id)}
-                                    disabled={!isEditMode}
-                                    className="w-4 h-4 disabled:cursor-not-allowed"
-                                  />
-                                  <span className={`${getRoleColor(member.role)} w-2 h-2 rounded-full`}></span>
-                                  <span className="text-white text-sm">{member.name}</span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default ThroneLibertyRoster;
-
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2 flex items-center justify-center gap-3">
             <Users className="w-10 h-10" />
@@ -1122,7 +1371,7 @@ export default ThroneLibertyRoster;
           )}
         </div>
 
-        <div className="flex gap-2 mb-6 flex-wrap">
+        <div className="flex gap-2 mb-6 flex-wrap justify-center">
           <button
             onClick={() => setActiveTab('groups')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
@@ -1347,7 +1596,7 @@ export default ThroneLibertyRoster;
                       {group.members.length < 6 && isEditMode && (
                         <select
                           onChange={(e) => {
-                            const member = unassignedMembers.find(m => m.id === e.target.value);
+                            const member = unassignedMembers.find(m => m.id === parseInt(e.target.value));
                             if (member) {
                               assignToGroup(member, group.id);
                               e.target.value = '';
@@ -1369,264 +1618,5 @@ export default ThroneLibertyRoster;
                 })}
               </div>
             </div>
-          </div>
-        )}
-
-        {activeTab === 'roster' && (
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <div className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="bg-slate-700 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-white">{stats.total}</div>
-                <div className="text-sm text-slate-400">Total Active</div>
-              </div>
-              <div className="bg-green-900/30 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-green-400">{stats.tanks}</div>
-                <div className="text-sm text-slate-400">Tanks</div>
-              </div>
-              <div className="bg-yellow-900/30 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-yellow-400">{stats.healers}</div>
-                <div className="text-sm text-slate-400">Healers</div>
-              </div>
-              <div className="bg-red-900/30 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-red-400">{stats.dps}</div>
-                <div className="text-sm text-slate-400">DPS</div>
-              </div>
-              <div className="bg-blue-900/30 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-blue-400">{stats.onDiscord}</div>
-                <div className="text-sm text-slate-400">On Discord</div>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-lg font-bold text-white mb-3">Class Distribution</h3>
-              <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
-                {Object.entries(classStats).map(([className, count]) => (
-                  count > 0 && (
-                    <div key={className} className="bg-slate-700 p-2 rounded text-center">
-                      <div className="text-lg font-bold text-purple-400">{count}</div>
-                      <div className="text-xs text-slate-400">{className}</div>
-                    </div>
-                  )
-                ))}
-              </div>
-            </div>
-
-            <h2 className="text-xl font-bold text-white mb-4">Active Roster</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-700">
-                    <th className="text-left text-slate-400 py-3 px-4">Name</th>
-                    <th className="text-left text-slate-400 py-3 px-4">Role</th>
-                    <th className="text-left text-slate-400 py-3 px-4">Weapon Combo</th>
-                    <th className="text-left text-slate-400 py-3 px-4">Class Name</th>
-                    <th className="text-left text-slate-400 py-3 px-4">Questlog</th>
-                    <th className="text-center text-slate-400 py-3 px-4">Events</th>
-                    <th className="text-center text-slate-400 py-3 px-4">Discord</th>
-                    <th className="text-center text-slate-400 py-3 px-4">Probation</th>
-                    {isEditMode && <th className="text-center text-slate-400 py-3 px-4">Actions</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeMembers.map(member => {
-                    const memberStats = getMemberStats(member.id);
-                    return (
-                      <tr key={member.id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <span className={`${getRoleColor(member.role)} w-3 h-3 rounded-full`}></span>
-                            <span className="text-white">{member.name}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <select
-                            value={member.role}
-                            onChange={(e) => updateMemberRole(member.id, e.target.value)}
-                            disabled={!isEditMode}
-                            className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
-                          >
-                            <option value="TANK">Tank</option>
-                            <option value="HEALER">Healer</option>
-                            <option value="DPS">DPS</option>
-                            <option value="UNKNOWN">Unknown</option>
-                          </select>
-                        </td>
-                        <td className="py-3 px-4">
-                          <select
-                            value={member.weaponCombo}
-                            onChange={(e) => updateWeaponCombo(member.id, e.target.value)}
-                            disabled={!isEditMode}
-                            className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
-                          >
-                            <option value="">Select...</option>
-                            {weaponCombos.map(combo => (
-                              <option key={combo} value={combo}>{combo}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="py-3 px-4">
-                          <input
-                            type="text"
-                            value={member.className}
-                            disabled
-                            className="w-full px-2 py-1 bg-slate-600 text-slate-300 text-sm rounded cursor-not-allowed"
-                          />
-                        </td>
-                        <td className="py-3 px-4">
-                          <input
-                            type="text"
-                            placeholder="Build link..."
-                            value={member.questlog}
-                            onChange={(e) => updateQuestlog(member.id, e.target.value)}
-                            disabled={!isEditMode}
-                            className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
-                          />
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className="text-white font-semibold">{memberStats.total}</span>
-                          <div className="text-xs text-slate-400">
-                            AB:{memberStats.archboss} PVP:{memberStats.pvp} S:{memberStats.siege}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <input
-                            type="checkbox"
-                            checked={member.onDiscord}
-                            onChange={() => toggleDiscord(member.id)}
-                            disabled={!isEditMode}
-                            className="w-5 h-5 cursor-pointer disabled:cursor-not-allowed"
-                          />
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <input
-                            type="checkbox"
-                            checked={member.onProbation}
-                            onChange={() => toggleProbation(member.id)}
-                            disabled={!isEditMode}
-                            className="w-5 h-5 cursor-pointer disabled:cursor-not-allowed"
-                          />
-                        </td>
-                        {isEditMode && (
-                          <td className="py-3 px-4 text-center">
-                            <button
-                              onClick={() => removeMember(member.id)}
-                              className="text-red-400 hover:text-red-300"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {probationMembers.length > 0 && (
-              <>
-                <h2 className="text-xl font-bold text-orange-400 mb-4 mt-8">On Probation ({probationMembers.length})</h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-slate-700">
-                        <th className="text-left text-slate-400 py-3 px-4">Name</th>
-                        <th className="text-left text-slate-400 py-3 px-4">Role</th>
-                        <th className="text-left text-slate-400 py-3 px-4">Weapon Combo</th>
-                        <th className="text-left text-slate-400 py-3 px-4">Class Name</th>
-                        <th className="text-left text-slate-400 py-3 px-4">Questlog</th>
-                        <th className="text-center text-slate-400 py-3 px-4">Discord</th>
-                        <th className="text-center text-slate-400 py-3 px-4">Probation</th>
-                        {isEditMode && <th className="text-center text-slate-400 py-3 px-4">Actions</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {probationMembers.map(member => (
-                        <tr key={member.id} className="border-b border-slate-700/50 hover:bg-slate-700/30 bg-orange-900/10">
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              <span className={`${getRoleColor(member.role)} w-3 h-3 rounded-full`}></span>
-                              <span className="text-white">{member.name}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <select
-                              value={member.role}
-                              onChange={(e) => updateMemberRole(member.id, e.target.value)}
-                              disabled={!isEditMode}
-                              className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
-                            >
-                              <option value="TANK">Tank</option>
-                              <option value="HEALER">Healer</option>
-                              <option value="DPS">DPS</option>
-                              <option value="UNKNOWN">Unknown</option>
-                            </select>
-                          </td>
-                          <td className="py-3 px-4">
-                            <select
-                              value={member.weaponCombo}
-                              onChange={(e) => updateWeaponCombo(member.id, e.target.value)}
-                              disabled={!isEditMode}
-                              className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
-                            >
-                              <option value="">Select...</option>
-                              {weaponCombos.map(combo => (
-                                <option key={combo} value={combo}>{combo}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="py-3 px-4">
-                            <input
-                              type="text"
-                              value={member.className}
-                              disabled
-                              className="w-full px-2 py-1 bg-slate-600 text-slate-300 text-sm rounded cursor-not-allowed"
-                            />
-                          </td>
-                          <td className="py-3 px-4">
-                            <input
-                              type="text"
-                              placeholder="Build link..."
-                              value={member.questlog}
-                              onChange={(e) => updateQuestlog(member.id, e.target.value)}
-                              disabled={!isEditMode}
-                              className="w-full px-2 py-1 bg-slate-700 text-white text-sm rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-600 disabled:cursor-not-allowed"
-                            />
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <input
-                              type="checkbox"
-                              checked={member.onDiscord}
-                              onChange={() => toggleDiscord(member.id)}
-                              disabled={!isEditMode}
-                              className="w-5 h-5 cursor-pointer disabled:cursor-not-allowed"
-                            />
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <input
-                              type="checkbox"
-                              checked={member.onProbation}
-                              onChange={() => toggleProbation(member.id)}
-                              disabled={!isEditMode}
-                              className="w-5 h-5 cursor-pointer disabled:cursor-not-allowed"
-                            />
-                          </td>
-                          {isEditMode && (
-                            <td className="py-3 px-4 text-center">
-                              <button
-                                onClick={() => removeMember(member.id)}
-                                className="text-red-400 hover:text-red-300"
-                              >
-                                <Trash2 className="w-5 h-5" />
-                              </button>
-                            </td>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
           </div>
         )}
